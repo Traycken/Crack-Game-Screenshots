@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "Game Sites - Aperçu Screenshots",
+  "version": "1.2.0",
+  "description": "Affiche les captures d'écran d'un jeu directement sous sa carte sur SkidrowReloaded, IGG-Games et PCGamesTorrents.",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://www.skidrowreloaded.com/*",
+    "https://igg-games.com/*",
+    "https://pcgamestorrents.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Réglages des tailles"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.skidrowreloaded.com/*",
+        "https://igg-games.com/*",
+        "https://pcgamestorrents.com/*"
+      ],
+      "js": ["content.js"],
+      "css": ["style.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "game-sites-screenshots@local-extension",
+      "strict_min_version": "109.0"
+    }
+  }
+}

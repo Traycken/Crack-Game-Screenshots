@@ -1,0 +1,386 @@
+/* Habillage visuel générique des cartes (fond, coins arrondis, ombre) */
+.lgsp-card {
+    padding: 20px 22px;
+    border-radius: 10px;
+    background: rgba(127, 127, 127, 0.06);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(127, 127, 127, 0.15);
+    transition: box-shadow 0.15s ease;
+    box-sizing: border-box;
+}
+
+.lgsp-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+/* =====================================================================
+   Spécifique à SkidrowReloaded
+   ---------------------------------------------------------------------
+   Direction : registre de sorties façon catalogue logiciel plutôt que
+   thème "gamer" néon. Fond graphite sobre, un seul accent laiton pour
+   tout ce qui est interactif ou identifiant, police mono réservée aux
+   identifiants de release (groupe, type de lien) qui sont de la donnée
+   et pas de la déco. Toutes les règles sont scoppées sous
+   html.lgsp-skidrow-listing (posée par content.js uniquement sur la page
+   d'accueil / pages de liste, jamais sur la page d'un jeu) et sous
+   #overall-container / #sidebar, des id propres à ce site : elles
+   n'affectent ni les pages individuelles, ni IGG-Games, ni PCGamesTorrents.
+   ===================================================================== */
+
+html.lgsp-skidrow-listing #overall-container {
+    --lgsp-sr-bg: #1b1d22;
+    --lgsp-sr-border: rgba(255, 255, 255, 0.08);
+    --lgsp-sr-border-strong: rgba(255, 255, 255, 0.18);
+    --lgsp-sr-text: #e7e8ec;
+    --lgsp-sr-text-dim: #93969f;
+    --lgsp-sr-accent: #cf9f4f;
+    --lgsp-sr-accent-soft: rgba(207, 159, 79, 0.14);
+    --lgsp-sr-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+/* --- Carte de jeu ---------------------------------------------------- */
+
+html.lgsp-skidrow-listing #overall-container .post {
+    background: var(--lgsp-sr-bg) !important;
+    border: 1px solid var(--lgsp-sr-border) !important;
+    border-radius: 12px !important;
+    padding: 20px 22px !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    transition: border-color 0.15s ease;
+}
+
+html.lgsp-skidrow-listing #overall-container .post:hover {
+    border-color: var(--lgsp-sr-border-strong) !important;
+}
+
+html.lgsp-skidrow-listing #overall-container .post h2 {
+    margin: 0 0 10px;
+    font-size: 1.18em;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.35;
+}
+
+html.lgsp-skidrow-listing #overall-container .post h2 a {
+    color: var(--lgsp-sr-text);
+    text-decoration: none;
+}
+
+html.lgsp-skidrow-listing #overall-container .post h2 a:hover {
+    color: var(--lgsp-sr-accent);
+}
+
+html.lgsp-skidrow-listing #overall-container .post .clear {
+    display: none;
+}
+
+/* Ligne "Posted ... in ..." -> catégories transformées en badges discrets */
+
+html.lgsp-skidrow-listing #overall-container .post > .meta {
+    font-size: 0.72em;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--lgsp-sr-text-dim);
+    margin-bottom: 14px;
+}
+
+html.lgsp-skidrow-listing #overall-container .post > .meta a {
+    display: inline-block;
+    color: var(--lgsp-sr-accent);
+    background: var(--lgsp-sr-accent-soft);
+    padding: 2px 8px;
+    border-radius: 999px;
+    text-decoration: none;
+    margin-left: 4px;
+}
+
+/* --- Bloc contenu : vignette + texte ---------------------------------- */
+
+html.lgsp-skidrow-listing #overall-container .post-excerpt {
+    overflow: hidden; /* clearfix pour l'image flottante */
+}
+
+html.lgsp-skidrow-listing #overall-container .post-excerpt img.aligncenter {
+    float: left !important;
+    display: block !important;
+    width: 168px !important;
+    height: auto !important;
+    margin: 0 20px 8px 0 !important;
+    border-radius: 8px;
+    border: 1px solid var(--lgsp-sr-border);
+}
+
+html.lgsp-skidrow-listing #overall-container .post-excerpt p {
+    text-align: left !important;
+    margin: 0 0 8px;
+}
+
+html.lgsp-skidrow-listing #overall-container .post-excerpt p:empty {
+    display: none;
+    margin: 0;
+}
+
+/* Filet de sécurité : le thème du site décore chaque annonce avec des
+   couleurs différentes au hasard (cyan, orange, vert...). On neutralise
+   toute couleur inline pour garder une palette homogène. */
+html.lgsp-skidrow-listing #overall-container .post-excerpt [style*="color"] {
+    color: inherit !important;
+}
+
+/* Synopsis, tronqué à 3 lignes pour garder des cartes de hauteur régulière */
+html.lgsp-skidrow-listing #overall-container .post-excerpt p:not(.lgsp-tagrow) {
+    color: var(--lgsp-sr-text-dim);
+    font-size: 0.88em;
+    line-height: 1.55;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Ligne "GROUPE – TYPE DE LIEN – TORRENT" transformée par content.js en
+   badges façon identifiants de release (voir enhanceReleaseTags). */
+html.lgsp-skidrow-listing #overall-container .post-excerpt p.lgsp-tagrow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    -webkit-line-clamp: unset;
+    overflow: visible;
+}
+
+html.lgsp-skidrow-listing #overall-container .lgsp-tag {
+    font-family: var(--lgsp-sr-mono);
+    font-size: 0.72em;
+    letter-spacing: 0.03em;
+    color: var(--lgsp-sr-accent);
+    background: var(--lgsp-sr-accent-soft);
+    border: 1px solid rgba(207, 159, 79, 0.25);
+    padding: 3px 9px;
+    border-radius: 6px;
+    white-space: nowrap;
+}
+
+/* --- Pied de carte : "Read More" / commentaires ------------------------ */
+
+html.lgsp-skidrow-listing #overall-container .post .meta.right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    clear: both;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--lgsp-sr-border);
+    font-size: 0.8em;
+}
+
+html.lgsp-skidrow-listing #overall-container .post .meta.right a {
+    text-decoration: none;
+    color: var(--lgsp-sr-text-dim);
+}
+
+html.lgsp-skidrow-listing #overall-container .post .meta.right a:first-child {
+    color: #17181c;
+    background: var(--lgsp-sr-accent);
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+html.lgsp-skidrow-listing #overall-container .post .meta.right a:first-child:hover {
+    filter: brightness(1.08);
+}
+
+html.lgsp-skidrow-listing #overall-container .post .meta.right a:not(:first-child):hover {
+    color: var(--lgsp-sr-text);
+}
+
+/* --- Galerie de captures (partagée par les 3 sites) --------------------- */
+
+.lgsp-gallery {
+    display: grid;
+    grid-template-columns: repeat(var(--lgsp-gallery-columns, 3), 1fr);
+    gap: 0;
+    padding: 10px 0 4px;
+    margin-top: 8px;
+    border-top: 1px dashed rgba(0, 0, 0, 0.15);
+    clear: both;
+    box-sizing: border-box;
+    width: 100%;
+    overflow: hidden;
+}
+
+.lgsp-gallery img {
+    width: 100%;
+    height: var(--lgsp-gallery-height, 260px);
+    object-fit: contain;
+    background: rgba(0, 0, 0, 0.06);
+    border-radius: 6px;
+    cursor: zoom-in;
+    transition: transform 0.15s ease;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.lgsp-gallery img:hover {
+    transform: scale(1.02);
+}
+
+/* Reprise du thème sur SkidrowReloaded : bordure sobre + étiquette */
+
+html.lgsp-skidrow-listing #overall-container .lgsp-gallery {
+    border-top: 1px solid var(--lgsp-sr-border);
+    margin-top: 16px;
+}
+
+html.lgsp-skidrow-listing #overall-container .lgsp-gallery:not(:empty)::before {
+    content: "Captures d'écran";
+    display: block;
+    grid-column: 1 / -1;
+    font-size: 0.68em;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--lgsp-sr-text-dim);
+    margin-bottom: 2px;
+}
+
+/* --- Sidebar ------------------------------------------------------------ */
+
+html.lgsp-skidrow-listing #overall-container #sidebar .widget {
+    background: var(--lgsp-sr-bg);
+    border: 1px solid var(--lgsp-sr-border);
+    border-radius: 10px;
+    padding: 16px 18px;
+}
+
+html.lgsp-skidrow-listing #overall-container #sidebar .widget h3 {
+    margin: 0 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--lgsp-sr-border);
+    font-size: 0.72em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--lgsp-sr-accent);
+}
+
+/* Recherche : le bouton image d'origine est masqué (le formulaire se
+   soumet toujours avec Entrée) et remplacé par une icône dessinée en CSS. */
+html.lgsp-skidrow-listing #overall-container #search-1 form {
+    position: relative;
+}
+
+html.lgsp-skidrow-listing #overall-container #search-1 #searchbar {
+    width: 100%;
+    box-sizing: border-box;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--lgsp-sr-border);
+    border-radius: 8px;
+    padding: 9px 34px 9px 12px;
+    color: var(--lgsp-sr-text);
+    font-size: 0.85em;
+}
+
+html.lgsp-skidrow-listing #overall-container #search-1 #searchbar:focus {
+    outline: none;
+    border-color: var(--lgsp-sr-accent);
+}
+
+html.lgsp-skidrow-listing #overall-container #search-1 #searchsubmit {
+    display: none;
+}
+
+html.lgsp-skidrow-listing #overall-container #search-1 form::after {
+    content: "";
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    width: 13px;
+    height: 13px;
+    transform: translateY(-50%);
+    opacity: 0.5;
+    pointer-events: none;
+    background-color: var(--lgsp-sr-text);
+    -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg>') no-repeat center / contain;
+    mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg>') no-repeat center / contain;
+}
+
+/* Prochaines sorties : une ligne par entrée, nom du jeu mis en avant via
+   ::first-line (le nom est toujours suivi d'un saut de ligne avant la
+   date dans le HTML du widget). */
+html.lgsp-skidrow-listing #overall-container #text-33 .textwidget p {
+    margin: 0;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--lgsp-sr-border);
+    color: var(--lgsp-sr-text-dim);
+    font-size: 0.82em;
+    line-height: 1.6;
+}
+
+html.lgsp-skidrow-listing #overall-container #text-33 .textwidget p:last-child {
+    border-bottom: none;
+}
+
+html.lgsp-skidrow-listing #overall-container #text-33 .textwidget p::first-line {
+    color: var(--lgsp-sr-text);
+    font-weight: 600;
+}
+
+/* Jeux exclusifs : grille propre à la place de la pile d'images séparées
+   par des <br>, dont on masque les sauts de ligne. */
+html.lgsp-skidrow-listing #overall-container #text-3 .textwidget p {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin: 0;
+}
+
+html.lgsp-skidrow-listing #overall-container #text-3 .textwidget br {
+    display: none;
+}
+
+html.lgsp-skidrow-listing #overall-container #text-3 .textwidget a {
+    display: block;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--lgsp-sr-border);
+}
+
+html.lgsp-skidrow-listing #overall-container #text-3 .textwidget img {
+    display: block;
+    width: 100%;
+    height: 68px;
+    object-fit: cover;
+    transition: transform 0.2s ease;
+}
+
+html.lgsp-skidrow-listing #overall-container #text-3 .textwidget a:hover img {
+    transform: scale(1.06);
+}
+
+/* --- Éléments partagés (utilisés par les 3 sites) ------------------------ */
+
+.lgsp-status {
+    font-size: 0.75em;
+    opacity: 0.6;
+    padding: 6px 0;
+}
+
+.lgsp-lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999999;
+    cursor: zoom-out;
+}
+
+.lgsp-lightbox img {
+    max-width: 92vw;
+    max-height: 92vh;
+    border-radius: 6px;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
+}
