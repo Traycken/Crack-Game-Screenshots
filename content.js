@@ -1,14 +1,4 @@
 (() => {
-  // Répond au popup qui a besoin de la largeur réelle de la page pour
-  // calculer une largeur max. par défaut (voir computeDefaultSettings).
-  if (chrome.runtime && chrome.runtime.onMessage) {
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-      if (message && message.type === "lgsp-get-page-width") {
-        sendResponse({ width: document.documentElement.clientWidth });
-      }
-    });
-  }
-
   const PROCESSED_ATTR = "data-lgsp-done";
   const BLACKLIST_SUBSTR = [
     "secure.gravatar.com",
@@ -22,6 +12,14 @@
 
   // Config par domaine : sélecteurs de carte/titre/images, repris du scraper
   // Rust du projet quand disponibles.
+  //
+  // "mainSelector" désigne, pour chaque mise en page, l'élément qui contient
+  // réellement la liste des jeux (sans la sidebar). Il sert à deux choses :
+  //  - mesurer la largeur réellement disponible pour calculer la hauteur des
+  //    captures (computeGalleryHeight), plutôt que deviner via une largeur
+  //    de sidebar codée en dur ;
+  //  - pour la mise en page "uikit-container", neutraliser une largeur max.
+  //    fixe imposée par le thème sur cet élément (voir applyUikitContainerLayout).
   const SITE_CONFIGS = {
     "www.skidrowreloaded.com": {
       cardSelector: "div.post",
@@ -40,20 +38,40 @@
       // de nettoyage DOM que le CSS seul ne peut pas faire proprement.
       enhanceCard: true,
     },
+    // IGG-Games et PCGamesTorrents partagent le même thème UIkit (WordPress).
+    // Chaîne de parents réelle (vérifiée sur le HTML d'IGG-Games) :
+    //   body > .tm-page-container > .tm-page > #tm-main > .uk-container
+    //        > .uk-grid > [".container-main-post" (uk-width-expand@m), "aside#tm-sidebar"]
+    // TROIS éléments plafonnent la largeur, chacun plus restrictif que le
+    // suivant, et tous devaient être neutralisés (élargir "#tm-main" seul,
+    // ou même ".uk-container" seul, ne suffisait pas) :
+    //  - ".tm-page" (le thème l'utilise pour la mise en page "boxed") :
+    //    max-width: 1010px dès que la fenêtre atteint 1010px de large. C'est
+    //    l'élément le plus haut dans l'arbre et donc celui qui l'emportait
+    //    silencieusement sur tous les réglages plus bas.
+    //  - ".uk-container" : max-width: 1200px (conteneur UIkit par défaut),
+    //    englobe la liste de jeux ET la sidebar.
+    //  - ".container-main-post" : max-width: 680px fixe en desktop, qui
+    //    écrasait la classe UIkit "uk-width-expand@m" déjà présente dans le
+    //    HTML et censée répartir l'espace avec la sidebar.
     "pcgamestorrents.com": {
       cardSelector: "article.uk-article",
       titleSelector: "h2.uk-article-title a",
       detailImageSelector: "img.igg-image-content",
-      layout: "simple",
-      mainContainerSelector: "#tm-main",
+      layout: "uikit-container",
+      pageSelector: ".tm-page",
+      containerSelector: ".uk-container",
+      mainSelector: ".container-main-post",
     },
     "igg-games.com": {
       // Meilleure estimation faute de HTML de référence pour ce site.
       cardSelector: "article.uk-article, article.post, div.post",
       titleSelector: "h2.uk-article-title a, h2.entry-title a, h2 a",
       detailImageSelector: "img.igg-image-content, .entry-content img, article img",
-      layout: "simple",
-      mainContainerSelector: "#tm-main",
+      layout: "uikit-container",
+      pageSelector: ".tm-page",
+      containerSelector: ".uk-container",
+      mainSelector: ".container-main-post",
     },
   };
 
@@ -80,72 +98,138 @@
   const imgSel = config.detailImageSelector;
   const MAX_THUMBS = 6;
 
-  // Réglages de tailles, persistés via chrome.storage.local et modifiables
-  // depuis le popup de l'extension. Appliqués comme variables CSS sur <html>.
-  // Par défaut (tant que l'utilisateur n'a rien réglé lui-même), la largeur
-  // max. de la page est automatique : 4/6 de la largeur réelle de la page,
-  // recalculée à chaque chargement plutôt qu'une valeur fixe.
+  // Réglages de tailles, persistés via chrome.storage.local (une paire de
+  // clés par site, préfixées par le nom d'hôte, pour que SkidrowReloaded,
+  // IGG-Games et PCGamesTorrents aient chacun leurs propres réglages).
   //
-  // "Hauteur des screenshots" n'est plus un réglage : elle est déduite de
-  // "Largeur max. de la page" et de "Screenshots par ligne" (voir
-  // computeGalleryHeight), en visant un ratio 16:9 typique d'une capture
-  // d'écran. L'espacement entre screenshots est fixé à 0.
-  const MIN_MAX_WIDTH = 800;
-  const MAX_MAX_WIDTH = 3840;
-  const SIDEBAR_WIDTH = 280 + 24; // largeur sidebar + gap, uniquement sur SkidrowReloaded
+  // "Largeur max. de la page" est un pourcentage (et non plus une valeur en
+  // pixels) de la largeur réelle de la fenêtre. Comme le pourcentage est
+  // recalculé à chaque redimensionnement (voir le listener "resize"
+  // ci-dessous), la mise en page garde le même ratio quelle que soit la
+  // taille de la fenêtre, sans réglage "largeur illimitée" séparé : 100%
+  // équivaut à une largeur illimitée.
+  //
+  // "Hauteur des screenshots" n'est plus un réglage : elle est déduite de la
+  // largeur réellement disponible dans la colonne de contenu (mesurée dans
+  // le DOM, voir computeGalleryHeight) et de "Screenshots par ligne", en
+  // visant un ratio 16:9 typique d'une capture d'écran. L'espacement entre
+  // screenshots est fixé à 0.
+  const STORAGE_PREFIX = `${location.hostname}:`;
+  const DEFAULTS = {
+    galleryColumns: 3,
+    maxContentWidthPct: 66.7,
+  };
   const CARD_PADDING = 44; // padding horizontal de la carte (22px de chaque côté)
   const SCREENSHOT_RATIO = 9 / 16; // hauteur/largeur visée pour une capture
+  const RESIZE_DEBOUNCE_MS = 120;
 
-  function computeDefaultSettings() {
-    const auto = Math.round((document.documentElement.clientWidth * 4) / 6);
+  function storageKey(field) {
+    return `${STORAGE_PREFIX}${field}`;
+  }
+
+  function defaultsWithPrefix() {
     return {
-      galleryColumns: 3,
-      maxContentWidth: Math.min(MAX_MAX_WIDTH, Math.max(MIN_MAX_WIDTH, auto)),
-      noLimit: false,
+      [storageKey("galleryColumns")]: DEFAULTS.galleryColumns,
+      [storageKey("maxContentWidthPct")]: DEFAULTS.maxContentWidthPct,
     };
   }
 
+  function normalizeSettings(raw) {
+    return {
+      galleryColumns: raw[storageKey("galleryColumns")],
+      maxContentWidthPct: raw[storageKey("maxContentWidthPct")],
+    };
+  }
+
+  function widthValueFor(settings) {
+    const px = Math.round(
+      (document.documentElement.clientWidth * settings.maxContentWidthPct) / 100
+    );
+    return `${px}px`;
+  }
+
+  // Mesure la largeur réellement rendue de la colonne de contenu plutôt que
+  // de la déduire arithmétiquement (ex. largeur de page moins largeur de
+  // sidebar codée en dur) : ça reste juste quelle que soit la mise en page
+  // ou la largeur de la sidebar, et ça se recalcule tout seul à chaque appel.
   function computeGalleryHeight(settings) {
-    let totalWidth = settings.noLimit
-      ? document.documentElement.clientWidth
-      : settings.maxContentWidth;
-    if (config.layout === "sidebar-flex") totalWidth -= SIDEBAR_WIDTH;
+    const ref = config.mainSelector ? document.querySelector(config.mainSelector) : null;
+    let totalWidth = ref ? ref.getBoundingClientRect().width : document.documentElement.clientWidth;
     totalWidth -= CARD_PADDING;
     const columns = Math.max(1, settings.galleryColumns);
     const columnWidth = Math.max(100, totalWidth) / columns;
     return Math.round(columnWidth * SCREENSHOT_RATIO);
   }
 
+  let lastSettings = null;
+
   function applySettings(settings) {
+    lastSettings = settings;
     const root = document.documentElement.style;
-    root.setProperty("--lgsp-gallery-height", `${computeGalleryHeight(settings)}px`);
     root.setProperty("--lgsp-gallery-columns", `${settings.galleryColumns}`);
     root.setProperty("--lgsp-gallery-gap", "0px");
     enforceMaxWidth(settings);
-  }
-
-  function widthValueFor(settings) {
-    return settings.noLimit ? "100%" : `${settings.maxContentWidth}px`;
-  }
-
-  function enforceMaxWidth(settings) {
-    if (config.layout === "sidebar-flex") {
-      applySidebarFlexLayout(settings);
-      return;
-    }
-    if (!config.mainContainerSelector) return;
-    document.querySelectorAll(config.mainContainerSelector).forEach((el) => {
-      el.style.setProperty("max-width", widthValueFor(settings), "important");
-      el.style.setProperty("width", "100%", "important");
-      el.style.setProperty("margin-left", "auto", "important");
-      el.style.setProperty("margin-right", "auto", "important");
+    // La hauteur de galerie dépend de la largeur du conteneur après son
+    // redimensionnement : on la calcule au prochain frame pour laisser le
+    // layout se stabiliser.
+    requestAnimationFrame(() => {
+      root.setProperty("--lgsp-gallery-height", `${computeGalleryHeight(settings)}px`);
     });
   }
 
-  function applySidebarFlexLayout(settings) {
+  function enforceMaxWidth(settings) {
+    const widthValue = widthValueFor(settings);
+    if (config.layout === "sidebar-flex") {
+      applySidebarFlexLayout(widthValue);
+      return;
+    }
+    if (config.layout === "uikit-container") {
+      applyUikitContainerLayout(widthValue);
+      return;
+    }
+  }
+
+  // IGG-Games / PCGamesTorrents (thème UIkit) : on élargit le SEUL élément
+  // le plus haut dans l'arbre qui porte encore une limite (".tm-page", le
+  // wrapper "boxed" du thème, 1010px) à la largeur voulue, puis on retire
+  // purement et simplement la limite des deux éléments plus bas
+  // (".uk-container" à 1200px, ".container-main-post" à 680px) : comme
+  // ".tm-page" est maintenant le seul à porter une largeur maximale, eux
+  // n'ont plus qu'à suivre en largeur 100%. Une fois la limite de
+  // ".container-main-post" retirée, la classe UIkit "uk-width-expand@m"
+  // déjà présente dans le HTML se charge toute seule de répartir l'espace
+  // entre la liste de jeux et la sidebar : pas besoin de reproduire le hack
+  // flex utilisé pour SkidrowReloaded.
+  function applyUikitContainerLayout(widthValue) {
+    if (config.pageSelector) {
+      document.querySelectorAll(config.pageSelector).forEach((el) => {
+        el.style.setProperty("max-width", widthValue, "important");
+        el.style.setProperty("width", "100%", "important");
+        el.style.setProperty("margin-left", "auto", "important");
+        el.style.setProperty("margin-right", "auto", "important");
+        el.style.setProperty("box-sizing", "border-box", "important");
+      });
+    }
+    if (config.containerSelector) {
+      document.querySelectorAll(config.containerSelector).forEach((el) => {
+        el.style.setProperty("max-width", "none", "important");
+        el.style.setProperty("width", "100%", "important");
+        el.style.setProperty("margin-left", "auto", "important");
+        el.style.setProperty("margin-right", "auto", "important");
+        el.style.setProperty("box-sizing", "border-box", "important");
+      });
+    }
+    if (config.mainSelector) {
+      document.querySelectorAll(config.mainSelector).forEach((el) => {
+        el.style.setProperty("max-width", "none", "important");
+      });
+    }
+  }
+
+  function applySidebarFlexLayout(widthValue) {
     if (config.pageWrapSelector) {
       document.querySelectorAll(config.pageWrapSelector).forEach((el) => {
-        el.style.setProperty("max-width", widthValueFor(settings), "important");
+        el.style.setProperty("max-width", widthValue, "important");
         el.style.setProperty("width", "100%", "important");
         el.style.setProperty("margin-left", "auto", "important");
         el.style.setProperty("margin-right", "auto", "important");
@@ -158,7 +242,7 @@
     const sidebar = config.sidebarSelector ? document.querySelector(config.sidebarSelector) : null;
     if (!wrap || !main) return;
 
-    wrap.style.setProperty("max-width", widthValueFor(settings), "important");
+    wrap.style.setProperty("max-width", widthValue, "important");
     wrap.style.setProperty("width", "100%", "important");
     wrap.style.setProperty("margin-left", "auto", "important");
     wrap.style.setProperty("margin-right", "auto", "important");
@@ -182,11 +266,28 @@
     }
   }
 
-  chrome.storage.local.get(computeDefaultSettings(), (settings) => applySettings(settings));
+  chrome.storage.local.get(defaultsWithPrefix(), (settings) =>
+    applySettings(normalizeSettings(settings))
+  );
 
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== "local") return;
-    chrome.storage.local.get(computeDefaultSettings(), (settings) => applySettings(settings));
+    const relevant = Object.keys(changes).some((key) => key.startsWith(STORAGE_PREFIX));
+    if (!relevant) return;
+    chrome.storage.local.get(defaultsWithPrefix(), (settings) =>
+      applySettings(normalizeSettings(settings))
+    );
+  });
+
+  // Recalcule la largeur max. et la hauteur de galerie à chaque
+  // redimensionnement de la fenêtre, pour que le ratio choisi dans le popup
+  // reste respecté automatiquement (plutôt que de figer une largeur en px
+  // une fois pour toutes au chargement).
+  let resizeTimer = null;
+  window.addEventListener("resize", () => {
+    if (!lastSettings) return;
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => applySettings(lastSettings), RESIZE_DEBOUNCE_MS);
   });
 
   const screenshotCache = new Map();
@@ -302,50 +403,32 @@
   }
 
   // --- Nettoyage spécifique SkidrowReloaded --------------------------------
-  // Le thème du site décore chaque annonce à la main avec des couleurs et
-  // une mise en page différentes à chaque fois. Le CSS seul peut neutraliser
-  // les couleurs, mais transformer la ligne "GROUPE – TYPE DE LIEN –
-  // TORRENT" en vraies étiquettes, et nettoyer le pied de carte, demande de
-  // toucher au DOM.
+  // Le thème du site décore chaque annonce avec la ligne "GROUPE – TYPE DE
+  // LIEN – TORRENT", un synopsis tronqué, souvent un paragraphe vide
+  // superflu, et un pied de carte "Read More" / commentaires. Sur demande,
+  // on retire tout ce texte/footer et on ne garde que la vignette (dans
+  // ".post-excerpt") : le reste de l'information est de toute façon déjà
+  // disponible via le titre de la carte et la galerie de captures.
 
-  function enhanceReleaseTags(card) {
+  function stripExcerptText(card) {
     const excerpt = card.querySelector(".post-excerpt");
     if (!excerpt) return;
     excerpt.querySelectorAll("p").forEach((p) => {
-      if (p.dataset.lgspTags) return;
-      const strong = p.querySelector("strong");
-      if (!strong) return;
-      const text = strong.textContent.replace(/\s+/g, " ").trim();
-      if (!text.includes("–")) return;
-      const parts = text
-        .split("–")
-        .map((s) => s.trim())
-        .filter(Boolean);
-      if (parts.length < 2) return;
-      p.textContent = "";
-      p.classList.add("lgsp-tagrow");
-      parts.forEach((part) => {
-        const tag = document.createElement("span");
-        tag.className = "lgsp-tag";
-        tag.textContent = part;
-        p.appendChild(tag);
-      });
-      p.dataset.lgspTags = "1";
+      // On garde le paragraphe s'il contient la vignette du jeu ; seul le
+      // texte (tags de release, synopsis, paragraphes vides) est retiré.
+      if (p.querySelector("img")) return;
+      p.remove();
     });
   }
 
-  function cleanFooterMeta(card) {
+  function removeFooterMeta(card) {
     const footer = card.querySelector(".meta.right");
-    if (!footer || footer.dataset.lgspClean) return;
-    Array.from(footer.childNodes).forEach((node) => {
-      if (node.nodeType === Node.TEXT_NODE) node.remove();
-    });
-    footer.dataset.lgspClean = "1";
+    if (footer) footer.remove();
   }
 
   function enhanceCard(card) {
-    enhanceReleaseTags(card);
-    cleanFooterMeta(card);
+    stripExcerptText(card);
+    removeFooterMeta(card);
   }
 
   function scanForCards() {

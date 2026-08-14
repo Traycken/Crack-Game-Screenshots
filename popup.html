@@ -8,30 +8,36 @@
 <body>
   <h1>Tailles des éléments</h1>
 
-  <div class="field">
-    <div class="field-label">
-      <label for="galleryColumns">Screenshots par ligne</label>
-      <span class="value" id="galleryColumnsValue">3</span>
+  <div class="site-links" id="siteLinks"></div>
+
+  <p class="site-label" id="siteLabel"></p>
+
+  <div id="unsupported" class="unsupported" hidden>
+    Ouvrez une page IGG-Games, PCGamesTorrents ou SkidrowReloaded pour régler
+    les tailles : les réglages sont indépendants pour chaque site.
+  </div>
+
+  <div id="fields">
+    <div class="field">
+      <div class="field-label">
+        <label for="galleryColumns">Screenshots par ligne</label>
+        <span class="value" id="galleryColumnsValue">3</span>
+      </div>
+      <input type="range" id="galleryColumns" min="1" max="8" step="1">
     </div>
-    <input type="range" id="galleryColumns" min="1" max="8" step="1">
-  </div>
 
-  <hr>
+    <hr>
 
-  <div class="field checkbox-field">
-    <label for="noLimit">Largeur de page illimitée</label>
-    <input type="checkbox" id="noLimit">
-  </div>
-
-  <div class="field">
-    <div class="field-label">
-      <label for="maxContentWidth">Largeur max. de la page</label>
-      <span class="value" id="maxContentWidthValue">1600px</span>
+    <div class="field">
+      <div class="field-label">
+        <label for="maxContentWidth">Largeur max. de la page</label>
+        <span class="value" id="maxContentWidthValue">66.7%</span>
+      </div>
+      <input type="range" id="maxContentWidth" min="20" max="100" step="0.1">
     </div>
-    <input type="range" id="maxContentWidth" min="800" max="3840" step="40">
-  </div>
 
-  <button id="resetBtn">Réinitialiser</button>
+    <button id="resetBtn">Réinitialiser</button>
+  </div>
 
   <script src="popup.js"></script>
 </body>

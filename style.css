@@ -111,88 +111,11 @@ html.lgsp-skidrow-listing #overall-container .post-excerpt img.aligncenter {
     border: 1px solid var(--lgsp-sr-border);
 }
 
-html.lgsp-skidrow-listing #overall-container .post-excerpt p {
-    text-align: left !important;
-    margin: 0 0 8px;
-}
-
-html.lgsp-skidrow-listing #overall-container .post-excerpt p:empty {
-    display: none;
-    margin: 0;
-}
-
 /* Filet de sécurité : le thème du site décore chaque annonce avec des
    couleurs différentes au hasard (cyan, orange, vert...). On neutralise
    toute couleur inline pour garder une palette homogène. */
 html.lgsp-skidrow-listing #overall-container .post-excerpt [style*="color"] {
     color: inherit !important;
-}
-
-/* Synopsis, tronqué à 3 lignes pour garder des cartes de hauteur régulière */
-html.lgsp-skidrow-listing #overall-container .post-excerpt p:not(.lgsp-tagrow) {
-    color: var(--lgsp-sr-text-dim);
-    font-size: 0.88em;
-    line-height: 1.55;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-/* Ligne "GROUPE – TYPE DE LIEN – TORRENT" transformée par content.js en
-   badges façon identifiants de release (voir enhanceReleaseTags). */
-html.lgsp-skidrow-listing #overall-container .post-excerpt p.lgsp-tagrow {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    -webkit-line-clamp: unset;
-    overflow: visible;
-}
-
-html.lgsp-skidrow-listing #overall-container .lgsp-tag {
-    font-family: var(--lgsp-sr-mono);
-    font-size: 0.72em;
-    letter-spacing: 0.03em;
-    color: var(--lgsp-sr-accent);
-    background: var(--lgsp-sr-accent-soft);
-    border: 1px solid rgba(207, 159, 79, 0.25);
-    padding: 3px 9px;
-    border-radius: 6px;
-    white-space: nowrap;
-}
-
-/* --- Pied de carte : "Read More" / commentaires ------------------------ */
-
-html.lgsp-skidrow-listing #overall-container .post .meta.right {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    clear: both;
-    margin-top: 16px;
-    padding-top: 14px;
-    border-top: 1px solid var(--lgsp-sr-border);
-    font-size: 0.8em;
-}
-
-html.lgsp-skidrow-listing #overall-container .post .meta.right a {
-    text-decoration: none;
-    color: var(--lgsp-sr-text-dim);
-}
-
-html.lgsp-skidrow-listing #overall-container .post .meta.right a:first-child {
-    color: #17181c;
-    background: var(--lgsp-sr-accent);
-    padding: 6px 14px;
-    border-radius: 6px;
-    font-weight: 600;
-}
-
-html.lgsp-skidrow-listing #overall-container .post .meta.right a:first-child:hover {
-    filter: brightness(1.08);
-}
-
-html.lgsp-skidrow-listing #overall-container .post .meta.right a:not(:first-child):hover {
-    color: var(--lgsp-sr-text);
 }
 
 /* --- Galerie de captures (partagée par les 3 sites) --------------------- */
