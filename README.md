@@ -7,4 +7,6 @@ Affiche les captures d'écran d'un jeu directement sous sa carte sur SkidrowRelo
 
 <div align="center">
 
-<img src="./Screenshot_4.png" alt="">
+<img src="./Screenshot_2.png" alt="">
+<img src="./Screenshot_5.png" alt="">
+<img src="./Screenshot_6.png" alt="">
