@@ -307,3 +307,124 @@ html.lgsp-skidrow-listing #overall-container #text-3 .textwidget a:hover img {
     border-radius: 6px;
     box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
 }
+
+/* --- Steam info : bouton + badge langue FR ------------------------------ */
+
+.lgsp-steam-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0 6px;
+    flex-wrap: wrap;
+}
+
+/* Bouton Steam */
+.lgsp-steam-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 14px 5px 10px;
+    border-radius: 6px;
+    background: #1b2838;
+    color: #c7d5e0;
+    font-size: 0.82em;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.15s ease, color 0.15s ease;
+    line-height: 1;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.lgsp-steam-btn:hover {
+    background: #2a475e;
+    color: #fff;
+}
+
+.lgsp-steam-btn svg {
+    flex-shrink: 0;
+}
+
+/* Badge langue FR – base commune */
+.lgsp-lang-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.76em;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+/* FR Texte + Voix (vert) */
+.lgsp-lang-full {
+    background: rgba(34, 197, 94, 0.14);
+    color: #16a34a;
+    border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+/* FR Texte uniquement (ambre) */
+.lgsp-lang-text {
+    background: rgba(234, 179, 8, 0.14);
+    color: #b45309;
+    border: 1px solid rgba(234, 179, 8, 0.25);
+}
+
+/* Pas de FR (rouge atténué) */
+.lgsp-lang-none {
+    background: rgba(239, 68, 68, 0.10);
+    color: #dc2626;
+    border: 1px solid rgba(239, 68, 68, 0.18);
+}
+
+/* Inconnu (gris) */
+.lgsp-lang-unknown {
+    background: rgba(127, 127, 127, 0.10);
+    color: #737373;
+    border: 1px solid rgba(127, 127, 127, 0.18);
+}
+
+/* --- Reprise thème SkidrowReloaded (fond sombre) ------------------------ */
+
+html.lgsp-skidrow-listing #overall-container .lgsp-steam-info {
+    padding-top: 10px;
+    padding-bottom: 8px;
+}
+
+html.lgsp-skidrow-listing #overall-container .lgsp-steam-btn {
+    background: rgba(27, 40, 56, 0.8);
+    border-color: var(--lgsp-sr-border);
+    color: #c7d5e0;
+}
+
+html.lgsp-skidrow-listing #overall-container .lgsp-steam-btn:hover {
+    background: #2a475e;
+    color: #fff;
+}
+
+/* Les badges sur fond sombre doivent utiliser des couleurs plus claires. */
+html.lgsp-skidrow-listing #overall-container .lgsp-lang-full {
+    background: rgba(34, 197, 94, 0.12);
+    color: #4ade80;
+    border-color: rgba(34, 197, 94, 0.20);
+}
+
+html.lgsp-skidrow-listing #overall-container .lgsp-lang-text {
+    background: rgba(234, 179, 8, 0.12);
+    color: #facc15;
+    border-color: rgba(234, 179, 8, 0.20);
+}
+
+html.lgsp-skidrow-listing #overall-container .lgsp-lang-none {
+    background: rgba(239, 68, 68, 0.10);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.16);
+}
+
+html.lgsp-skidrow-listing #overall-container .lgsp-lang-unknown {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--lgsp-sr-text-dim);
+    border-color: var(--lgsp-sr-border);
+}

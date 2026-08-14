@@ -313,6 +313,91 @@
     return urls.slice(0, MAX_THUMBS);
   }
 
+  // --- Steam : extraction d'URL et vérification langue FR ----------------
+
+  const STEAM_APP_RE = /https:\/\/store\.steampowered\.com\/app\/(\d+)/;
+
+  // Extrait le premier lien Steam Store de la page détail du jeu (déjà
+  // fetchée pour les screenshots). Renvoie { steamUrl, appId } ou null.
+  function extractSteamInfo(doc) {
+    const links = doc.querySelectorAll('a[href*="store.steampowered.com/app/"]');
+    for (const link of links) {
+      const href = link.getAttribute("href") || "";
+      const m = href.match(STEAM_APP_RE);
+      if (m) return { steamUrl: href, appId: m[1] };
+    }
+    return null;
+  }
+
+  // Demande au background script de vérifier la langue française via
+  // l'API Steam storefront. Renvoie une Promise<{frenchStatus}>.
+  function requestSteamLangInfo(appId) {
+    return new Promise((resolve) => {
+      chrome.runtime.sendMessage(
+        { type: "STEAM_LANG_CHECK", appId },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            console.warn("[Game Sites Screenshots] Steam lang check error:",
+              chrome.runtime.lastError.message);
+            resolve({ frenchStatus: "unknown" });
+            return;
+          }
+          resolve(response || { frenchStatus: "unknown" });
+        }
+      );
+    });
+  }
+
+  // Icône Steam SVG (logo officiel simplifié)
+  const STEAM_SVG = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2a10 10 0 0 0-9.96 9.04l5.35 2.21a2.83 2.83 0 0 1 1.6-.5l.01 0 2.39-3.46v-.05a3.78 3.78 0 1 1 3.78 3.78h-.09l-3.4 2.43a2.84 2.84 0 0 1-5.65.31L1.7 13.6A10 10 0 1 0 12 2zm-4.99 15.17l-1.71-.71a2.12 2.12 0 0 0 3.82.8 2.13 2.13 0 0 0-1.01-2.84l1.77.73a1.56 1.56 0 1 1-2.87 2.02zM15.17 9.24a2.52 2.52 0 1 0-2.52 2.52 2.52 2.52 0 0 0 2.52-2.52zm-4.28 0a1.76 1.76 0 1 1 1.76 1.76 1.76 1.76 0 0 1-1.76-1.76z"/></svg>`;
+
+  // Construit le bandeau Steam (bouton + badge FR) et l'insère dans la carte.
+  function renderSteamInfo(card, steamUrl, frenchStatus) {
+    // Évite les doublons si la carte est re-scannée.
+    if (card.querySelector(".lgsp-steam-info")) return;
+
+    const wrap = document.createElement("div");
+    wrap.className = "lgsp-steam-info";
+
+    // --- Bouton Steam ---
+    const btn = document.createElement("a");
+    btn.className = "lgsp-steam-btn";
+    btn.href = steamUrl;
+    btn.target = "_blank";
+    btn.rel = "noopener noreferrer";
+    btn.innerHTML = `${STEAM_SVG}<span>Steam</span>`;
+    btn.addEventListener("click", (e) => e.stopPropagation());
+    wrap.appendChild(btn);
+
+    // --- Badge langue FR ---
+    const badge = document.createElement("span");
+    if (frenchStatus === "full") {
+      badge.className = "lgsp-lang-badge lgsp-lang-full";
+      badge.innerHTML = `🇫🇷 FR Texte + Voix`;
+    } else if (frenchStatus === "subtitles") {
+      badge.className = "lgsp-lang-badge lgsp-lang-text";
+      badge.innerHTML = `🇫🇷 FR Texte`;
+    } else if (frenchStatus === "none") {
+      badge.className = "lgsp-lang-badge lgsp-lang-none";
+      badge.innerHTML = `❌ Pas de FR`;
+    } else {
+      // "unknown" ou erreur : on n'affiche pas de badge
+      badge.className = "lgsp-lang-badge lgsp-lang-unknown";
+      badge.innerHTML = `❓ FR inconnu`;
+    }
+    wrap.appendChild(badge);
+
+    // Insère le bandeau juste après le titre (h2), avant tout le reste.
+    const title = card.querySelector(titleSel);
+    const titleParent = title ? title.closest("h2") : null;
+    if (titleParent && titleParent.nextSibling) {
+      card.insertBefore(wrap, titleParent.nextSibling);
+    } else {
+      // Fallback : insère au début de la carte.
+      card.insertBefore(wrap, card.firstChild);
+    }
+  }
+
   function openLightbox(src) {
     const box = document.createElement("div");
     box.className = "lgsp-lightbox";
@@ -364,14 +449,25 @@
 
     try {
       let urls = screenshotCache.get(link);
+      let steamInfo = null;
       if (!urls) {
         const res = await fetch(link, { credentials: "include" });
         const html = await res.text();
         const doc = new DOMParser().parseFromString(html, "text/html");
         urls = extractScreenshots(doc);
         screenshotCache.set(link, urls);
+
+        // Extraction du lien Steam depuis la page détail (même fetch,
+        // pas de requête supplémentaire).
+        steamInfo = extractSteamInfo(doc);
       }
       renderGallery(card, urls);
+
+      // Vérification de la langue FR via le background script.
+      if (steamInfo && steamInfo.appId) {
+        const langResult = await requestSteamLangInfo(steamInfo.appId);
+        renderSteamInfo(card, steamInfo.steamUrl, langResult.frenchStatus);
+      }
     } catch (err) {
       status.textContent = "Erreur de chargement";
       console.warn("[Game Sites Screenshots]", link, err);
