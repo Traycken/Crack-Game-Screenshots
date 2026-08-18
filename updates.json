@@ -3,6 +3,14 @@
     "game-sites-screenshots@local-extension": {
       "updates": [
         {
+          "version": "1.5.0",
+          "update_link": "https://github.com/Traycken/Crack-Game-Screenshots/releases/download/v1.5.0/game-sites-screenshots-1.5.0.xpi"
+        },
+        {
+          "version": "1.4.0",
+          "update_link": "https://github.com/Traycken/Crack-Game-Screenshots/releases/download/v1.4.0/game-sites-screenshots-1.4.0.xpi"
+        },
+        {
           "version": "1.3.0",
           "update_link": "https://github.com/Traycken/Crack-Game-Screenshots/releases/download/v1.3.0/game-sites-screenshots-1.3.0.xpi"
         }

@@ -44,10 +44,12 @@ function renderSiteLinks(activeHost) {
 
 const DEFAULTS = {
   galleryColumns: 3,
+  galleryRows: 2,
+  maxTotalScreenshots: 30,
   maxContentWidth: 66.7, // pourcentage de la largeur de la fenêtre
 };
 
-const RANGE_FIELDS = ["galleryColumns", "maxContentWidth"];
+const RANGE_FIELDS = ["galleryColumns", "galleryRows", "maxTotalScreenshots", "maxContentWidth"];
 
 let currentHost = null;
 
@@ -57,7 +59,7 @@ function keyFor(field) {
 }
 
 function labelFor(field, value) {
-  if (field === "galleryColumns") return `${value}`;
+  if (field === "galleryColumns" || field === "galleryRows" || field === "maxTotalScreenshots") return `${value}`;
   return `${Number(value).toFixed(1)}%`;
 }
 
@@ -69,6 +71,8 @@ function updateLabel(field, value) {
 function loadSettings() {
   const defaults = {
     [keyFor("galleryColumns")]: DEFAULTS.galleryColumns,
+    [keyFor("galleryRows")]: DEFAULTS.galleryRows,
+    [keyFor("maxTotalScreenshots")]: DEFAULTS.maxTotalScreenshots,
     [keyFor("maxContentWidth")]: DEFAULTS.maxContentWidth,
   };
   chrome.storage.local.get(defaults, (settings) => {

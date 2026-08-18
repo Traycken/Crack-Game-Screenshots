@@ -16,15 +16,7 @@
 /* =====================================================================
    Spécifique à SkidrowReloaded
    ---------------------------------------------------------------------
-   Direction : registre de sorties façon catalogue logiciel plutôt que
-   thème "gamer" néon. Fond graphite sobre, un seul accent laiton pour
-   tout ce qui est interactif ou identifiant, police mono réservée aux
-   identifiants de release (groupe, type de lien) qui sont de la donnée
-   et pas de la déco. Toutes les règles sont scoppées sous
-   html.lgsp-skidrow-listing (posée par content.js uniquement sur la page
-   d'accueil / pages de liste, jamais sur la page d'un jeu) et sous
-   #overall-container / #sidebar, des id propres à ce site : elles
-   n'affectent ni les pages individuelles, ni IGG-Games, ni PCGamesTorrents.
+   Thème sobre graphite + accent laiton.
    ===================================================================== */
 
 html.lgsp-skidrow-listing #overall-container {
@@ -45,7 +37,7 @@ html.lgsp-skidrow-listing #overall-container .post {
     background: var(--lgsp-sr-bg) !important;
     border: 1px solid var(--lgsp-sr-border) !important;
     border-radius: 12px !important;
-    padding: 20px 22px !important;
+    padding: 18px 22px !important;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     transition: border-color 0.15s ease;
 }
@@ -55,7 +47,7 @@ html.lgsp-skidrow-listing #overall-container .post:hover {
 }
 
 html.lgsp-skidrow-listing #overall-container .post h2 {
-    margin: 0 0 10px;
+    margin: 0 0 8px;
     font-size: 1.18em;
     font-weight: 700;
     letter-spacing: -0.01em;
@@ -82,7 +74,7 @@ html.lgsp-skidrow-listing #overall-container .post > .meta {
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--lgsp-sr-text-dim);
-    margin-bottom: 14px;
+    margin-bottom: 10px;
 }
 
 html.lgsp-skidrow-listing #overall-container .post > .meta a {
@@ -95,80 +87,545 @@ html.lgsp-skidrow-listing #overall-container .post > .meta a {
     margin-left: 4px;
 }
 
-/* --- Bloc contenu : vignette + texte ---------------------------------- */
-
+/* Neutralisation de l'extrait vertical sur les listes Skidrow */
 html.lgsp-skidrow-listing #overall-container .post-excerpt {
-    overflow: hidden; /* clearfix pour l'image flottante */
+    display: none !important;
 }
 
-html.lgsp-skidrow-listing #overall-container .post-excerpt img.aligncenter {
-    float: left !important;
-    display: block !important;
-    width: 168px !important;
-    height: auto !important;
-    margin: 0 20px 8px 0 !important;
-    border-radius: 8px;
-    border: 1px solid var(--lgsp-sr-border);
+/* =====================================================================
+   Bandeau Steam enrichi (Bouton, Avis, Prix, Modes, Français 3 éléments)
+   ===================================================================== */
+
+.lgsp-steam-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0 10px;
+    flex-wrap: wrap;
 }
 
-/* Filet de sécurité : le thème du site décore chaque annonce avec des
-   couleurs différentes au hasard (cyan, orange, vert...). On neutralise
-   toute couleur inline pour garder une palette homogène. */
-html.lgsp-skidrow-listing #overall-container .post-excerpt [style*="color"] {
-    color: inherit !important;
+/* Bouton Steam */
+.lgsp-steam-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px 5px 9px;
+    border-radius: 6px;
+    background: #1b2838;
+    color: #c7d5e0;
+    font-size: 0.8em;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.15s ease, color 0.15s ease;
+    line-height: 1;
+    border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-/* --- Galerie de captures (partagée par les 3 sites) --------------------- */
+.lgsp-steam-btn:hover {
+    background: #2a475e;
+    color: #fff;
+}
 
-.lgsp-gallery {
-    display: grid;
-    grid-template-columns: repeat(var(--lgsp-gallery-columns, 3), 1fr);
-    gap: 0;
-    padding: 10px 0 4px;
-    margin-top: 8px;
+.lgsp-steam-btn svg {
+    flex-shrink: 0;
+}
+
+/* Badges Steam génériques */
+.lgsp-steam-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 9px;
+    border-radius: 6px;
+    font-size: 0.76em;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    line-height: 1.1;
+    white-space: nowrap;
+    border: 1px solid transparent;
+}
+
+/* Avis des joueurs */
+.lgsp-rev-positive {
+    background: rgba(34, 197, 94, 0.12);
+    color: #16a34a;
+    border-color: rgba(34, 197, 94, 0.25);
+}
+
+.lgsp-rev-mixed {
+    background: rgba(234, 179, 8, 0.12);
+    color: #b45309;
+    border-color: rgba(234, 179, 8, 0.25);
+}
+
+.lgsp-rev-negative {
+    background: rgba(239, 68, 68, 0.12);
+    color: #dc2626;
+    border-color: rgba(239, 68, 68, 0.25);
+}
+
+/* Prix */
+.lgsp-price-free {
+    background: rgba(16, 185, 129, 0.14);
+    color: #059669;
+    border-color: rgba(16, 185, 129, 0.28);
+}
+
+.lgsp-price-discount {
+    background: rgba(245, 158, 11, 0.14);
+    color: #d97706;
+    border-color: rgba(245, 158, 11, 0.28);
+}
+
+.lgsp-price-normal {
+    background: rgba(100, 116, 139, 0.12);
+    color: #475569;
+    border-color: rgba(100, 116, 139, 0.22);
+}
+
+/* Modes de jeu */
+.lgsp-mode-badge {
+    background: rgba(99, 102, 241, 0.10);
+    color: #4f46e5;
+    border-color: rgba(99, 102, 241, 0.20);
+}
+
+/* Badge Langue Français (3 éléments) */
+.lgsp-lang-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.76em;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    line-height: 1.1;
+    white-space: nowrap;
+    border: 1px solid transparent;
+}
+
+.lgsp-lang-full {
+    background: rgba(34, 197, 94, 0.14);
+    color: #16a34a;
+    border-color: rgba(34, 197, 94, 0.28);
+}
+
+.lgsp-lang-text {
+    background: rgba(234, 179, 8, 0.14);
+    color: #b45309;
+    border-color: rgba(234, 179, 8, 0.28);
+}
+
+.lgsp-lang-none {
+    background: rgba(239, 68, 68, 0.10);
+    color: #dc2626;
+    border-color: rgba(239, 68, 68, 0.20);
+}
+
+/* Indicateurs de coche ✔ et croix ❌ en SVG */
+.lgsp-check,
+.lgsp-svg-check {
+    display: inline-flex;
+    align-items: center;
+    color: #16a34a !important;
+    vertical-align: -1px;
+    flex-shrink: 0;
+}
+
+.lgsp-cross,
+.lgsp-svg-cross {
+    display: inline-flex;
+    align-items: center;
+    color: #dc2626 !important;
+    vertical-align: -1px;
+    flex-shrink: 0;
+}
+
+.lgsp-price-discount s {
+    opacity: 0.65;
+    margin-right: 3px;
+    font-weight: normal;
+    text-decoration: line-through;
+}
+
+/* Description courte / Pitch du jeu (game_description_snippet) */
+.lgsp-game-desc {
+    width: 100%;
+    margin: 6px 0 2px;
+    font-size: 0.83em;
+    line-height: 1.5;
+    color: #4b5563;
+    letter-spacing: 0.01em;
+}
+
+/* --- Adaptations Steam Info pour le thème sombre Skidrow ------------ */
+
+html.lgsp-skidrow-listing #overall-container .lgsp-check,
+html.lgsp-skidrow-listing #overall-container .lgsp-svg-check {
+    color: #4ade80 !important;
+}
+
+html.lgsp-skidrow-listing #overall-container .lgsp-cross,
+html.lgsp-skidrow-listing #overall-container .lgsp-svg-cross {
+    color: #f87171 !important;
+}
+
+html.lgsp-skidrow-listing #overall-container .lgsp-price-discount s {
+    opacity: 0.6;
+}
+
+html.lgsp-skidrow-listing #overall-container .lgsp-game-desc {
+    color: var(--lgsp-sr-text-dim);
+}
+
+html.lgsp-skidrow-listing #overall-container .lgsp-steam-info {
+    padding-top: 4px;
+    padding-bottom: 12px;
+}
+
+html.lgsp-skidrow-listing #overall-container .lgsp-steam-btn {
+    background: rgba(27, 40, 56, 0.9);
+    border-color: var(--lgsp-sr-border);
+    color: #c7d5e0;
+}
+
+html.lgsp-skidrow-listing #overall-container .lgsp-steam-btn:hover {
+    background: #2a475e;
+    color: #fff;
+}
+
+html.lgsp-skidrow-listing #overall-container .lgsp-rev-positive {
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+    border-color: rgba(34, 197, 94, 0.25);
+}
+
+html.lgsp-skidrow-listing #overall-container .lgsp-rev-mixed {
+    background: rgba(234, 179, 8, 0.15);
+    color: #facc15;
+    border-color: rgba(234, 179, 8, 0.25);
+}
+
+html.lgsp-skidrow-listing #overall-container .lgsp-rev-negative {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.25);
+}
+
+html.lgsp-skidrow-listing #overall-container .lgsp-price-free {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border-color: rgba(16, 185, 129, 0.30);
+}
+
+html.lgsp-skidrow-listing #overall-container .lgsp-price-discount {
+    background: rgba(245, 158, 11, 0.18);
+    color: #fbbf24;
+    border-color: rgba(245, 158, 11, 0.35);
+}
+
+html.lgsp-skidrow-listing #overall-container .lgsp-price-normal {
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--lgsp-sr-text);
+    border-color: var(--lgsp-sr-border);
+}
+
+html.lgsp-skidrow-listing #overall-container .lgsp-mode-badge {
+    background: rgba(99, 102, 241, 0.16);
+    color: #a5b4fc;
+    border-color: rgba(99, 102, 241, 0.28);
+}
+
+html.lgsp-skidrow-listing #overall-container .lgsp-lang-full {
+    background: rgba(34, 197, 94, 0.14);
+    color: #4ade80;
+    border-color: rgba(34, 197, 94, 0.24);
+}
+
+html.lgsp-skidrow-listing #overall-container .lgsp-lang-text {
+    background: rgba(234, 179, 8, 0.14);
+    color: #facc15;
+    border-color: rgba(234, 179, 8, 0.24);
+}
+
+html.lgsp-skidrow-listing #overall-container .lgsp-lang-none {
+    background: rgba(239, 68, 68, 0.12);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.20);
+}
+
+html.lgsp-skidrow-listing #overall-container .lgsp-lang-unknown {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--lgsp-sr-text-dim);
+    border-color: var(--lgsp-sr-border);
+}
+
+/* =====================================================================
+   Galerie multimédia Carrousel (Jaquette + Vidéos + Captures HD)
+   ===================================================================== */
+
+.lgsp-gallery-container {
+    position: relative;
+    width: 100%;
+    margin-top: 6px;
+    padding-top: 8px;
     border-top: 1px dashed rgba(0, 0, 0, 0.15);
     clear: both;
     box-sizing: border-box;
-    width: 100%;
-    overflow: hidden;
 }
 
-.lgsp-gallery img {
+html.lgsp-skidrow-listing #overall-container .lgsp-gallery-container {
+    border-top: 1px solid var(--lgsp-sr-border);
+}
+
+.lgsp-gallery-track {
     width: 100%;
-    height: var(--lgsp-gallery-height, 260px);
-    object-fit: contain;
-    background: rgba(0, 0, 0, 0.06);
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
     border-radius: 6px;
-    cursor: zoom-in;
-    transition: transform 0.15s ease;
-    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
-    min-width: 0;
+    padding: 2px 0;
+}
+
+.lgsp-gallery-track::-webkit-scrollbar {
+    display: none;
+}
+
+.lgsp-gallery {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-rows: repeat(var(--lgsp-gallery-rows, 2), auto);
+    grid-auto-columns: calc((100% - (var(--lgsp-gallery-columns, 3) - 1) * var(--lgsp-gallery-gap, 6px)) / var(--lgsp-gallery-columns, 3));
+    gap: var(--lgsp-gallery-gap, 6px);
+    width: 100%;
     box-sizing: border-box;
 }
 
-.lgsp-gallery img:hover {
-    transform: scale(1.02);
+/* Flèches de défilement du carrousel */
+.lgsp-carousel-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 15;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(20, 20, 25, 0.85);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    padding: 0;
 }
 
-/* Reprise du thème sur SkidrowReloaded : bordure sobre + étiquette */
-
-html.lgsp-skidrow-listing #overall-container .lgsp-gallery {
-    border-top: 1px solid var(--lgsp-sr-border);
-    margin-top: 16px;
+.lgsp-arrow-prev {
+    left: -14px;
 }
 
-html.lgsp-skidrow-listing #overall-container .lgsp-gallery:not(:empty)::before {
-    content: "Captures d'écran";
+.lgsp-arrow-next {
+    right: -14px;
+}
+
+.lgsp-carousel-arrow:hover {
+    background: #cf9f4f;
+    color: #1b1d22;
+    transform: translateY(-50%) scale(1.1);
+    border-color: #cf9f4f;
+}
+
+.lgsp-carousel-arrow.lgsp-hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Vignette dans la galerie */
+.lgsp-gallery-item {
+    position: relative;
     display: block;
-    grid-column: 1 / -1;
-    font-size: 0.68em;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--lgsp-sr-text-dim);
-    margin-bottom: 2px;
+    overflow: hidden;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.06);
+    cursor: zoom-in;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+    min-width: 0;
+    box-sizing: border-box;
+    text-decoration: none;
 }
 
-/* --- Sidebar ------------------------------------------------------------ */
+.lgsp-gallery-item:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    z-index: 2;
+}
+
+.lgsp-gallery-item img {
+    width: 100%;
+    height: var(--lgsp-gallery-height, 260px);
+    object-fit: contain;
+    display: block;
+    background: rgba(0, 0, 0, 0.12);
+}
+
+/* Vignette Jaquette avec lien */
+.lgsp-gallery-cover {
+    cursor: pointer;
+}
+
+.lgsp-tag-cover {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    background: rgba(207, 159, 79, 0.9);
+    color: #1b1d22;
+    font-size: 0.65em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 2px 6px;
+    border-radius: 4px;
+    pointer-events: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+/* Vignette Vidéo / Trailer */
+.lgsp-gallery-video {
+    cursor: pointer;
+}
+
+.lgsp-play-badge {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+    color: #fff;
+    font-size: 0.72em;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    pointer-events: none;
+    transition: background 0.15s ease;
+}
+
+.lgsp-gallery-video:hover .lgsp-play-badge {
+    background: #e11d48;
+    border-color: #f43f5e;
+}
+
+/* Lecteur vidéo / Aperçu au survol incrusté dans la galerie */
+.lgsp-gallery-embed {
+    width: 100%;
+    height: var(--lgsp-gallery-height, 260px);
+    border: none;
+    display: block;
+    background: #000;
+    border-radius: 6px;
+    object-fit: contain;
+}
+
+.lgsp-playing-inline {
+    background: #000 !important;
+}
+
+.lgsp-playing-inline:hover {
+    transform: none !important;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Overlay transparent au-dessus de la prévisualisation pour capter le clic */
+.lgsp-video-click-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    cursor: zoom-in;
+    background: transparent;
+}
+
+/* =====================================================================
+   Lightbox (Support Images et Vidéos)
+   ===================================================================== */
+
+.lgsp-lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999999;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.lgsp-lightbox-content {
+    max-width: 92vw;
+    max-height: 90vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lgsp-lightbox-content img {
+    max-width: 92vw;
+    max-height: 88vh;
+    border-radius: 6px;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+    object-fit: contain;
+}
+
+.lgsp-lightbox-video {
+    width: 85vw;
+    height: calc(85vw * 9 / 16);
+    max-width: 1200px;
+    max-height: 75vh;
+    border-radius: 8px;
+    border: none;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.9);
+    background: #000;
+}
+
+.lgsp-lightbox-close {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #fff;
+    font-size: 28px;
+    line-height: 1;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.15s ease;
+    z-index: 1000000;
+}
+
+.lgsp-lightbox-close:hover {
+    background: rgba(239, 68, 68, 0.8);
+    transform: scale(1.1);
+}
+
+/* =====================================================================
+   Sidebar & Widgets SkidrowReloaded
+   ===================================================================== */
 
 html.lgsp-skidrow-listing #overall-container #sidebar .widget {
     background: var(--lgsp-sr-bg);
@@ -188,8 +645,6 @@ html.lgsp-skidrow-listing #overall-container #sidebar .widget h3 {
     color: var(--lgsp-sr-accent);
 }
 
-/* Recherche : le bouton image d'origine est masqué (le formulaire se
-   soumet toujours avec Entrée) et remplacé par une icône dessinée en CSS. */
 html.lgsp-skidrow-listing #overall-container #search-1 form {
     position: relative;
 }
@@ -229,9 +684,6 @@ html.lgsp-skidrow-listing #overall-container #search-1 form::after {
     mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg>') no-repeat center / contain;
 }
 
-/* Prochaines sorties : une ligne par entrée, nom du jeu mis en avant via
-   ::first-line (le nom est toujours suivi d'un saut de ligne avant la
-   date dans le HTML du widget). */
 html.lgsp-skidrow-listing #overall-container #text-33 .textwidget p {
     margin: 0;
     padding: 9px 0;
@@ -250,8 +702,6 @@ html.lgsp-skidrow-listing #overall-container #text-33 .textwidget p::first-line 
     font-weight: 600;
 }
 
-/* Jeux exclusifs : grille propre à la place de la pile d'images séparées
-   par des <br>, dont on masque les sauts de ligne. */
 html.lgsp-skidrow-listing #overall-container #text-3 .textwidget p {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -282,149 +732,8 @@ html.lgsp-skidrow-listing #overall-container #text-3 .textwidget a:hover img {
     transform: scale(1.06);
 }
 
-/* --- Éléments partagés (utilisés par les 3 sites) ------------------------ */
-
 .lgsp-status {
     font-size: 0.75em;
     opacity: 0.6;
     padding: 6px 0;
-}
-
-.lgsp-lightbox {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.9);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 999999;
-    cursor: zoom-out;
-}
-
-.lgsp-lightbox img {
-    max-width: 92vw;
-    max-height: 92vh;
-    border-radius: 6px;
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
-}
-
-/* --- Steam info : bouton + badge langue FR ------------------------------ */
-
-.lgsp-steam-info {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 0 6px;
-    flex-wrap: wrap;
-}
-
-/* Bouton Steam */
-.lgsp-steam-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 5px 14px 5px 10px;
-    border-radius: 6px;
-    background: #1b2838;
-    color: #c7d5e0;
-    font-size: 0.82em;
-    font-weight: 600;
-    text-decoration: none;
-    transition: background 0.15s ease, color 0.15s ease;
-    line-height: 1;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.lgsp-steam-btn:hover {
-    background: #2a475e;
-    color: #fff;
-}
-
-.lgsp-steam-btn svg {
-    flex-shrink: 0;
-}
-
-/* Badge langue FR – base commune */
-.lgsp-lang-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 10px;
-    border-radius: 999px;
-    font-size: 0.76em;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    line-height: 1;
-    white-space: nowrap;
-}
-
-/* FR Texte + Voix (vert) */
-.lgsp-lang-full {
-    background: rgba(34, 197, 94, 0.14);
-    color: #16a34a;
-    border: 1px solid rgba(34, 197, 94, 0.25);
-}
-
-/* FR Texte uniquement (ambre) */
-.lgsp-lang-text {
-    background: rgba(234, 179, 8, 0.14);
-    color: #b45309;
-    border: 1px solid rgba(234, 179, 8, 0.25);
-}
-
-/* Pas de FR (rouge atténué) */
-.lgsp-lang-none {
-    background: rgba(239, 68, 68, 0.10);
-    color: #dc2626;
-    border: 1px solid rgba(239, 68, 68, 0.18);
-}
-
-/* Inconnu (gris) */
-.lgsp-lang-unknown {
-    background: rgba(127, 127, 127, 0.10);
-    color: #737373;
-    border: 1px solid rgba(127, 127, 127, 0.18);
-}
-
-/* --- Reprise thème SkidrowReloaded (fond sombre) ------------------------ */
-
-html.lgsp-skidrow-listing #overall-container .lgsp-steam-info {
-    padding-top: 10px;
-    padding-bottom: 8px;
-}
-
-html.lgsp-skidrow-listing #overall-container .lgsp-steam-btn {
-    background: rgba(27, 40, 56, 0.8);
-    border-color: var(--lgsp-sr-border);
-    color: #c7d5e0;
-}
-
-html.lgsp-skidrow-listing #overall-container .lgsp-steam-btn:hover {
-    background: #2a475e;
-    color: #fff;
-}
-
-/* Les badges sur fond sombre doivent utiliser des couleurs plus claires. */
-html.lgsp-skidrow-listing #overall-container .lgsp-lang-full {
-    background: rgba(34, 197, 94, 0.12);
-    color: #4ade80;
-    border-color: rgba(34, 197, 94, 0.20);
-}
-
-html.lgsp-skidrow-listing #overall-container .lgsp-lang-text {
-    background: rgba(234, 179, 8, 0.12);
-    color: #facc15;
-    border-color: rgba(234, 179, 8, 0.20);
-}
-
-html.lgsp-skidrow-listing #overall-container .lgsp-lang-none {
-    background: rgba(239, 68, 68, 0.10);
-    color: #f87171;
-    border-color: rgba(239, 68, 68, 0.16);
-}
-
-html.lgsp-skidrow-listing #overall-container .lgsp-lang-unknown {
-    background: rgba(255, 255, 255, 0.06);
-    color: var(--lgsp-sr-text-dim);
-    border-color: var(--lgsp-sr-border);
 }

@@ -8,52 +8,25 @@
     "backgroundpic.jpg",
     "logoo.png",
     "/wp-content/themes/",
+    "icon-rss.gif",
+    "icon-twitter.gif",
+    "icon-facebook.gif",
   ];
 
   // Config par domaine : sélecteurs de carte/titre/images, repris du scraper
   // Rust du projet quand disponibles.
-  //
-  // "mainSelector" désigne, pour chaque mise en page, l'élément qui contient
-  // réellement la liste des jeux (sans la sidebar). Il sert à deux choses :
-  //  - mesurer la largeur réellement disponible pour calculer la hauteur des
-  //    captures (computeGalleryHeight), plutôt que deviner via une largeur
-  //    de sidebar codée en dur ;
-  //  - pour la mise en page "uikit-container", neutraliser une largeur max.
-  //    fixe imposée par le thème sur cet élément (voir applyUikitContainerLayout).
   const SITE_CONFIGS = {
     "www.skidrowreloaded.com": {
       cardSelector: "div.post",
       titleSelector: "h2 a",
       detailImageSelector: "img",
-      // Mise en page en 2 colonnes flottantes (#main-content + #sidebar
-      // dans #overall-container) : il faut élargir le vrai conteneur parent
-      // et transformer les flottants en flexbox pour que main-content
-      // profite de l'espace, plutôt que juste élargir #main-content seul.
       layout: "sidebar-flex",
       wrapSelector: "#overall-container",
       mainSelector: "#main-content",
       sidebarSelector: "#sidebar",
       pageWrapSelector: "#page-wrap",
-      // Redesign spécifique (voir style.css) : la carte a besoin d'un peu
-      // de nettoyage DOM que le CSS seul ne peut pas faire proprement.
       enhanceCard: true,
     },
-    // IGG-Games et PCGamesTorrents partagent le même thème UIkit (WordPress).
-    // Chaîne de parents réelle (vérifiée sur le HTML d'IGG-Games) :
-    //   body > .tm-page-container > .tm-page > #tm-main > .uk-container
-    //        > .uk-grid > [".container-main-post" (uk-width-expand@m), "aside#tm-sidebar"]
-    // TROIS éléments plafonnent la largeur, chacun plus restrictif que le
-    // suivant, et tous devaient être neutralisés (élargir "#tm-main" seul,
-    // ou même ".uk-container" seul, ne suffisait pas) :
-    //  - ".tm-page" (le thème l'utilise pour la mise en page "boxed") :
-    //    max-width: 1010px dès que la fenêtre atteint 1010px de large. C'est
-    //    l'élément le plus haut dans l'arbre et donc celui qui l'emportait
-    //    silencieusement sur tous les réglages plus bas.
-    //  - ".uk-container" : max-width: 1200px (conteneur UIkit par défaut),
-    //    englobe la liste de jeux ET la sidebar.
-    //  - ".container-main-post" : max-width: 680px fixe en desktop, qui
-    //    écrasait la classe UIkit "uk-width-expand@m" déjà présente dans le
-    //    HTML et censée répartir l'espace avec la sidebar.
     "pcgamestorrents.com": {
       cardSelector: "article.uk-article",
       titleSelector: "h2.uk-article-title a",
@@ -64,7 +37,6 @@
       mainSelector: ".container-main-post",
     },
     "igg-games.com": {
-      // Meilleure estimation faute de HTML de référence pour ce site.
       cardSelector: "article.uk-article, article.post, div.post",
       titleSelector: "h2.uk-article-title a, h2.entry-title a, h2 a",
       detailImageSelector: "img.igg-image-content, .entry-content img, article img",
@@ -78,11 +50,7 @@
   const config = SITE_CONFIGS[location.hostname];
   if (!config) return;
 
-  // SkidrowReloaded : le thème habille aussi bien la page d'accueil (grille
-  // de cartes) que la page d'un jeu individuel (article seul). Le redesign
-  // (CSS + nettoyage DOM) ne doit s'appliquer que sur les pages de liste :
-  // "/", pagination "/page/N/" et archives "/category/...". Sur une page de
-  // jeu individuelle, on ne touche à rien et le thème d'origine reste tel quel.
+  // SkidrowReloaded : activation sur les pages de liste uniquement
   if (config.layout === "sidebar-flex") {
     const path = location.pathname;
     const isListingPage =
@@ -96,31 +64,16 @@
   const cardSel = config.cardSelector;
   const titleSel = config.titleSelector;
   const imgSel = config.detailImageSelector;
-  const MAX_THUMBS = 6;
 
-  // Réglages de tailles, persistés via chrome.storage.local (une paire de
-  // clés par site, préfixées par le nom d'hôte, pour que SkidrowReloaded,
-  // IGG-Games et PCGamesTorrents aient chacun leurs propres réglages).
-  //
-  // "Largeur max. de la page" est un pourcentage (et non plus une valeur en
-  // pixels) de la largeur réelle de la fenêtre. Comme le pourcentage est
-  // recalculé à chaque redimensionnement (voir le listener "resize"
-  // ci-dessous), la mise en page garde le même ratio quelle que soit la
-  // taille de la fenêtre, sans réglage "largeur illimitée" séparé : 100%
-  // équivaut à une largeur illimitée.
-  //
-  // "Hauteur des screenshots" n'est plus un réglage : elle est déduite de la
-  // largeur réellement disponible dans la colonne de contenu (mesurée dans
-  // le DOM, voir computeGalleryHeight) et de "Screenshots par ligne", en
-  // visant un ratio 16:9 typique d'une capture d'écran. L'espacement entre
-  // screenshots est fixé à 0.
   const STORAGE_PREFIX = `${location.hostname}:`;
   const DEFAULTS = {
     galleryColumns: 3,
+    galleryRows: 2,
+    maxTotalScreenshots: 30,
     maxContentWidthPct: 66.7,
   };
-  const CARD_PADDING = 44; // padding horizontal de la carte (22px de chaque côté)
-  const SCREENSHOT_RATIO = 9 / 16; // hauteur/largeur visée pour une capture
+  const CARD_PADDING = 44;
+  const SCREENSHOT_RATIO = 9 / 16;
   const RESIZE_DEBOUNCE_MS = 120;
 
   function storageKey(field) {
@@ -130,14 +83,18 @@
   function defaultsWithPrefix() {
     return {
       [storageKey("galleryColumns")]: DEFAULTS.galleryColumns,
+      [storageKey("galleryRows")]: DEFAULTS.galleryRows,
+      [storageKey("maxTotalScreenshots")]: DEFAULTS.maxTotalScreenshots,
       [storageKey("maxContentWidthPct")]: DEFAULTS.maxContentWidthPct,
     };
   }
 
   function normalizeSettings(raw) {
     return {
-      galleryColumns: raw[storageKey("galleryColumns")],
-      maxContentWidthPct: raw[storageKey("maxContentWidthPct")],
+      galleryColumns: raw[storageKey("galleryColumns")] ?? DEFAULTS.galleryColumns,
+      galleryRows: raw[storageKey("galleryRows")] ?? DEFAULTS.galleryRows,
+      maxTotalScreenshots: raw[storageKey("maxTotalScreenshots")] ?? DEFAULTS.maxTotalScreenshots,
+      maxContentWidthPct: raw[storageKey("maxContentWidthPct")] ?? DEFAULTS.maxContentWidthPct,
     };
   }
 
@@ -148,16 +105,12 @@
     return `${px}px`;
   }
 
-  // Mesure la largeur réellement rendue de la colonne de contenu plutôt que
-  // de la déduire arithmétiquement (ex. largeur de page moins largeur de
-  // sidebar codée en dur) : ça reste juste quelle que soit la mise en page
-  // ou la largeur de la sidebar, et ça se recalcule tout seul à chaque appel.
   function computeGalleryHeight(settings) {
     const ref = config.mainSelector ? document.querySelector(config.mainSelector) : null;
     let totalWidth = ref ? ref.getBoundingClientRect().width : document.documentElement.clientWidth;
     totalWidth -= CARD_PADDING;
     const columns = Math.max(1, settings.galleryColumns);
-    const columnWidth = Math.max(100, totalWidth) / columns;
+    const columnWidth = Math.max(80, totalWidth) / columns;
     return Math.round(columnWidth * SCREENSHOT_RATIO);
   }
 
@@ -167,13 +120,27 @@
     lastSettings = settings;
     const root = document.documentElement.style;
     root.setProperty("--lgsp-gallery-columns", `${settings.galleryColumns}`);
-    root.setProperty("--lgsp-gallery-gap", "0px");
+    root.setProperty("--lgsp-gallery-rows", `${settings.galleryRows || 2}`);
+    root.setProperty("--lgsp-gallery-gap", "6px");
     enforceMaxWidth(settings);
-    // La hauteur de galerie dépend de la largeur du conteneur après son
-    // redimensionnement : on la calcule au prochain frame pour laisser le
-    // layout se stabiliser.
     requestAnimationFrame(() => {
       root.setProperty("--lgsp-gallery-height", `${computeGalleryHeight(settings)}px`);
+      document.querySelectorAll(".lgsp-gallery-track").forEach((track) => {
+        const container = track.closest(".lgsp-gallery-container");
+        if (!container) return;
+        const prev = container.querySelector(".lgsp-arrow-prev");
+        const next = container.querySelector(".lgsp-arrow-next");
+        const maxScroll = track.scrollWidth - track.clientWidth;
+        if (prev && next) {
+          if (maxScroll <= 4) {
+            prev.classList.add("lgsp-hidden");
+            next.classList.add("lgsp-hidden");
+          } else {
+            prev.classList.toggle("lgsp-hidden", track.scrollLeft <= 4);
+            next.classList.toggle("lgsp-hidden", track.scrollLeft >= maxScroll - 4);
+          }
+        }
+      });
     });
   }
 
@@ -189,17 +156,6 @@
     }
   }
 
-  // IGG-Games / PCGamesTorrents (thème UIkit) : on élargit le SEUL élément
-  // le plus haut dans l'arbre qui porte encore une limite (".tm-page", le
-  // wrapper "boxed" du thème, 1010px) à la largeur voulue, puis on retire
-  // purement et simplement la limite des deux éléments plus bas
-  // (".uk-container" à 1200px, ".container-main-post" à 680px) : comme
-  // ".tm-page" est maintenant le seul à porter une largeur maximale, eux
-  // n'ont plus qu'à suivre en largeur 100%. Une fois la limite de
-  // ".container-main-post" retirée, la classe UIkit "uk-width-expand@m"
-  // déjà présente dans le HTML se charge toute seule de répartir l'espace
-  // entre la liste de jeux et la sidebar : pas besoin de reproduire le hack
-  // flex utilisé pour SkidrowReloaded.
   function applyUikitContainerLayout(widthValue) {
     if (config.pageSelector) {
       document.querySelectorAll(config.pageSelector).forEach((el) => {
@@ -279,10 +235,6 @@
     );
   });
 
-  // Recalcule la largeur max. et la hauteur de galerie à chaque
-  // redimensionnement de la fenêtre, pour que le ratio choisi dans le popup
-  // reste respecté automatiquement (plutôt que de figer une largeur en px
-  // une fois pour toutes au chargement).
   let resizeTimer = null;
   window.addEventListener("resize", () => {
     if (!lastSettings) return;
@@ -290,14 +242,15 @@
     resizeTimer = setTimeout(() => applySettings(lastSettings), RESIZE_DEBOUNCE_MS);
   });
 
-  const screenshotCache = new Map();
+  const detailCache = new Map();
 
   function findCardLink(card) {
     const titleLink = card.querySelector(titleSel);
     return titleLink ? titleLink.getAttribute("href") : null;
   }
 
-  function extractScreenshots(doc) {
+  // Extrait les captures d'écran depuis la page détail
+  function extractScreenshots(doc, coverSrc) {
     const nodes = doc.querySelectorAll(imgSel);
     const urls = [];
     nodes.forEach((el) => {
@@ -308,17 +261,49 @@
         "";
       if (!src.startsWith("http")) return;
       if (BLACKLIST_SUBSTR.some((b) => src.includes(b))) return;
+      // Ne pas ajouter l'image si elle correspond à la jaquette
+      if (coverSrc && isSameImageUrl(src, coverSrc)) return;
       if (!urls.includes(src)) urls.push(src);
     });
-    return urls.slice(0, MAX_THUMBS);
+    return urls;
   }
 
-  // --- Steam : extraction d'URL et vérification langue FR ----------------
+  // Vérifie si 2 URLs pointent vers la même ressource image
+  function isSameImageUrl(url1, url2) {
+    if (!url1 || !url2) return false;
+    if (url1 === url2) return true;
+    const clean1 = url1.split("?")[0].toLowerCase();
+    const clean2 = url2.split("?")[0].toLowerCase();
+    return clean1 === clean2;
+  }
+
+  // Extrait les vidéos YouTube depuis la page détail
+  function extractYouTubeVideos(doc) {
+    const videos = [];
+    const iframes = doc.querySelectorAll('iframe[src*="youtube.com"], iframe[src*="youtu.be"]');
+    iframes.forEach((iframe) => {
+      const src = iframe.getAttribute("src") || "";
+      const m = src.match(/(?:embed\/|v=|vi\/|youtu\.be\/|\/v\/)([a-zA-Z0-9_-]{11})/);
+      if (m && m[1]) {
+        const videoId = m[1];
+        if (!videos.some((v) => v.id === videoId)) {
+          videos.push({
+            type: "youtube",
+            id: videoId,
+            embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1`,
+            thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+            title: "Bande-annonce YouTube",
+          });
+        }
+      }
+    });
+    return videos;
+  }
+
+  // --- Steam : extraction d'URL et interrogation de l'API enrichie -----------
 
   const STEAM_APP_RE = /https:\/\/store\.steampowered\.com\/app\/(\d+)/;
 
-  // Extrait le premier lien Steam Store de la page détail du jeu (déjà
-  // fetchée pour les screenshots). Renvoie { steamUrl, appId } ou null.
   function extractSteamInfo(doc) {
     const links = doc.querySelectorAll('a[href*="store.steampowered.com/app/"]');
     for (const link of links) {
@@ -329,37 +314,36 @@
     return null;
   }
 
-  // Demande au background script de vérifier la langue française via
-  // l'API Steam storefront. Renvoie une Promise<{frenchStatus}>.
-  function requestSteamLangInfo(appId) {
+  function requestSteamGameInfo(appId) {
     return new Promise((resolve) => {
       chrome.runtime.sendMessage(
-        { type: "STEAM_LANG_CHECK", appId },
+        { type: "STEAM_GAME_INFO", appId },
         (response) => {
           if (chrome.runtime.lastError) {
-            console.warn("[Game Sites Screenshots] Steam lang check error:",
+            console.warn("[Game Sites Screenshots] Steam info error:",
               chrome.runtime.lastError.message);
-            resolve({ frenchStatus: "unknown" });
+            resolve(null);
             return;
           }
-          resolve(response || { frenchStatus: "unknown" });
+          resolve(response || null);
         }
       );
     });
   }
 
-  // Icône Steam SVG (logo officiel simplifié)
-  const STEAM_SVG = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2a10 10 0 0 0-9.96 9.04l5.35 2.21a2.83 2.83 0 0 1 1.6-.5l.01 0 2.39-3.46v-.05a3.78 3.78 0 1 1 3.78 3.78h-.09l-3.4 2.43a2.84 2.84 0 0 1-5.65.31L1.7 13.6A10 10 0 1 0 12 2zm-4.99 15.17l-1.71-.71a2.12 2.12 0 0 0 3.82.8 2.13 2.13 0 0 0-1.01-2.84l1.77.73a1.56 1.56 0 1 1-2.87 2.02zM15.17 9.24a2.52 2.52 0 1 0-2.52 2.52 2.52 2.52 0 0 0 2.52-2.52zm-4.28 0a1.76 1.76 0 1 1 1.76 1.76 1.76 1.76 0 0 1-1.76-1.76z"/></svg>`;
+  const STEAM_SVG = `<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M12 2a10 10 0 0 0-9.96 9.04l5.35 2.21a2.83 2.83 0 0 1 1.6-.5l.01 0 2.39-3.46v-.05a3.78 3.78 0 1 1 3.78 3.78h-.09l-3.4 2.43a2.84 2.84 0 0 1-5.65.31L1.7 13.6A10 10 0 1 0 12 2zm-4.99 15.17l-1.71-.71a2.12 2.12 0 0 0 3.82.8 2.13 2.13 0 0 0-1.01-2.84l1.77.73a1.56 1.56 0 1 1-2.87 2.02zM15.17 9.24a2.52 2.52 0 1 0-2.52 2.52 2.52 2.52 0 0 0 2.52-2.52zm-4.28 0a1.76 1.76 0 1 1 1.76 1.76 1.76 1.76 0 0 1-1.76-1.76z"/></svg>`;
 
-  // Construit le bandeau Steam (bouton + badge FR) et l'insère dans la carte.
-  function renderSteamInfo(card, steamUrl, frenchStatus) {
-    // Évite les doublons si la carte est re-scannée.
+  const SVG_CHECK = `<svg class="lgsp-svg-check" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 8.5 6.5 11.5 12.5 4.5"/></svg>`;
+  const SVG_CROSS = `<svg class="lgsp-svg-cross" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg>`;
+
+  // Construit le bandeau complet d'informations Steam
+  function renderSteamInfo(card, steamUrl, steamData) {
     if (card.querySelector(".lgsp-steam-info")) return;
 
     const wrap = document.createElement("div");
     wrap.className = "lgsp-steam-info";
 
-    // --- Bouton Steam ---
+    // 1. Bouton Steam
     const btn = document.createElement("a");
     btn.className = "lgsp-steam-btn";
     btn.href = steamUrl;
@@ -369,74 +353,426 @@
     btn.addEventListener("click", (e) => e.stopPropagation());
     wrap.appendChild(btn);
 
-    // --- Badge langue FR ---
-    const badge = document.createElement("span");
-    if (frenchStatus === "full") {
-      badge.className = "lgsp-lang-badge lgsp-lang-full";
-      badge.innerHTML = `🇫🇷 FR Texte + Voix`;
-    } else if (frenchStatus === "subtitles") {
-      badge.className = "lgsp-lang-badge lgsp-lang-text";
-      badge.innerHTML = `🇫🇷 FR Texte`;
-    } else if (frenchStatus === "none") {
-      badge.className = "lgsp-lang-badge lgsp-lang-none";
-      badge.innerHTML = `❌ Pas de FR`;
-    } else {
-      // "unknown" ou erreur : on n'affiche pas de badge
-      badge.className = "lgsp-lang-badge lgsp-lang-unknown";
-      badge.innerHTML = `❓ FR inconnu`;
-    }
-    wrap.appendChild(badge);
+    if (steamData) {
+      // 2. Évaluation des joueurs
+      if (steamData.reviews) {
+        const rev = steamData.reviews;
+        const revBadge = document.createElement("span");
+        revBadge.className = `lgsp-steam-badge lgsp-rev-${rev.scoreClass}`;
+        const icon = rev.scoreClass === "negative" ? "👎" : "👍";
+        revBadge.innerHTML = `${icon} ${rev.desc} (${rev.percent}%)`;
+        revBadge.title = `${rev.totalPositive.toLocaleString()} avis positifs sur ${rev.total.toLocaleString()} (${rev.percent}%)`;
+        wrap.appendChild(revBadge);
+      }
 
-    // Insère le bandeau juste après le titre (h2), avant tout le reste.
+      // 3. Prix
+      if (steamData.price) {
+        const priceBadge = document.createElement("span");
+        if (steamData.price.isFree) {
+          priceBadge.className = "lgsp-steam-badge lgsp-price-free";
+          priceBadge.textContent = "💰 Gratuit";
+        } else if (steamData.price.discountPercent > 0) {
+          priceBadge.className = "lgsp-steam-badge lgsp-price-discount";
+          const initial = steamData.price.initialFormatted ? `<s>${steamData.price.initialFormatted}</s> ` : "";
+          priceBadge.innerHTML = `💰 ${initial}-${steamData.price.discountPercent}% ${steamData.price.formatted}`;
+        } else if (steamData.price.formatted) {
+          priceBadge.className = "lgsp-steam-badge lgsp-price-normal";
+          priceBadge.textContent = `💰 ${steamData.price.formatted}`;
+        }
+        if (priceBadge.innerHTML) wrap.appendChild(priceBadge);
+      }
+
+      // 4. Modes de jeu (Solo, Multijoueur, Coop, MMO)
+      if (Array.isArray(steamData.modes) && steamData.modes.length > 0) {
+        const modeIcons = {
+          Solo: "🎮",
+          Multijoueur: "👥",
+          Coop: "🤝",
+          MMO: "🌐",
+        };
+        steamData.modes.forEach((mode) => {
+          const modeBadge = document.createElement("span");
+          modeBadge.className = "lgsp-steam-badge lgsp-mode-badge";
+          modeBadge.textContent = `${modeIcons[mode] || "🕹️"} ${mode}`;
+          if (steamData.modeDetails) {
+            modeBadge.title = steamData.modeDetails;
+          }
+          wrap.appendChild(modeBadge);
+        });
+      }
+
+      // 5. Badge Langue Français détaillé (3 éléments : Interface, Audio, Sous-titres)
+      const french = steamData.french;
+      if (french) {
+        const badge = document.createElement("span");
+        const check = `<span class="lgsp-check">${SVG_CHECK}</span>`;
+        const cross = `<span class="lgsp-cross">${SVG_CROSS}</span>`;
+        if (french.status === "full") {
+          badge.className = "lgsp-lang-badge lgsp-lang-full";
+          badge.innerHTML = `🇫🇷 FR: Interface ${check} · Audio ${check} · Sous-titres ${check}`;
+          badge.title = "Français intégralement supporté (Interface, Audio et Sous-titres)";
+        } else if (french.status === "subtitles") {
+          badge.className = "lgsp-lang-badge lgsp-lang-text";
+          badge.innerHTML = `🇫🇷 FR: Interface ${check} · Audio ${cross} · Sous-titres ${check}`;
+          badge.title = "Français avec Interface et Sous-titres (sans doublage audio)";
+        } else if (french.status === "none") {
+          badge.className = "lgsp-lang-badge lgsp-lang-none";
+          badge.innerHTML = `${cross} Pas de FR: Interface ${cross} · Audio ${cross} · Sous-titres ${cross}`;
+          badge.title = "Le français n'est pas supporté";
+        } else {
+          badge.className = "lgsp-lang-badge lgsp-lang-unknown";
+          badge.innerHTML = `❓ FR inconnu`;
+        }
+        wrap.appendChild(badge);
+      }
+
+      // 6. Description courte du jeu (game_description_snippet)
+      if (steamData.shortDescription) {
+        const descEl = document.createElement("p");
+        descEl.className = "lgsp-game-desc";
+        descEl.textContent = steamData.shortDescription;
+        wrap.appendChild(descEl);
+      }
+    }
+
+    // Insertion sous le titre (h2)
     const title = card.querySelector(titleSel);
     const titleParent = title ? title.closest("h2") : null;
     if (titleParent && titleParent.nextSibling) {
       card.insertBefore(wrap, titleParent.nextSibling);
     } else {
-      // Fallback : insère au début de la carte.
       card.insertBefore(wrap, card.firstChild);
     }
   }
 
-  function openLightbox(src) {
+  // --- Lightbox multimédia (Images et Vidéos) --------------------------------
+
+  // Attache la source vidéo (Flux HLS via Hls.js ou vidéo MP4)
+  function attachVideoSource(video, item) {
+    if (item.hls) {
+      if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        video.src = item.hls;
+        video.play().catch(() => {});
+      } else if (typeof Hls !== "undefined" && Hls.isSupported()) {
+        const hls = new Hls({ enableWorker: false });
+        hls.loadSource(item.hls);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          video.play().catch(() => {});
+        });
+        video._hls = hls;
+      } else if (item.mp4) {
+        video.src = item.mp4;
+        video.play().catch(() => {});
+      }
+    } else if (item.mp4) {
+      video.src = item.mp4;
+      video.play().catch(() => {});
+    }
+  }
+
+  function openLightbox(item) {
     const box = document.createElement("div");
     box.className = "lgsp-lightbox";
-    const img = document.createElement("img");
-    img.src = src;
-    box.appendChild(img);
-    box.addEventListener("click", () => box.remove());
+
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "lgsp-lightbox-close";
+    closeBtn.innerHTML = "&times;";
+    closeBtn.setAttribute("aria-label", "Fermer");
+    box.appendChild(closeBtn);
+
+    const container = document.createElement("div");
+    container.className = "lgsp-lightbox-content";
+
+    if (typeof item === "string" || item.type === "image") {
+      const src = typeof item === "string" ? item : item.src;
+      const img = document.createElement("img");
+      img.src = src;
+      container.appendChild(img);
+    } else if (item.type === "youtube") {
+      const iframe = document.createElement("iframe");
+      iframe.src = item.embedUrl;
+      iframe.setAttribute("allow", "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture");
+      iframe.setAttribute("allowfullscreen", "true");
+      iframe.className = "lgsp-lightbox-video";
+      container.appendChild(iframe);
+    } else if (item.type === "steam_movie") {
+      const video = document.createElement("video");
+      video.controls = true;
+      video.autoplay = true;
+      video.playsInline = true;
+      video.className = "lgsp-lightbox-video";
+      attachVideoSource(video, item);
+      container.appendChild(video);
+    }
+
+    box.appendChild(container);
+
+    function close() {
+      const v = container.querySelector("video");
+      if (v && v._hls) {
+        v._hls.destroy();
+      }
+      box.remove();
+      document.removeEventListener("keydown", onKeyDown);
+    }
+
+    function onKeyDown(e) {
+      if (e.key === "Escape") close();
+    }
+
+    box.addEventListener("click", (e) => {
+      if (e.target === box || e.target === closeBtn) close();
+    });
+    document.addEventListener("keydown", onKeyDown);
     document.body.appendChild(box);
   }
 
-  function renderGallery(card, urls) {
+  // --- Rendu de la galerie multimédia (Jaquette + Vidéos + Screenshots) -------
+
+  function renderGallery(card, mediaItems, coverData) {
     const existingStatus = card.querySelector(".lgsp-status");
     if (existingStatus) existingStatus.remove();
 
-    if (urls.length === 0) {
+    const existingGallery = card.querySelector(".lgsp-gallery");
+    if (existingGallery) existingGallery.remove();
+
+    const gallery = document.createElement("div");
+    gallery.className = "lgsp-gallery";
+
+    // 1. Jaquette originale en 1ère vignette (avec son lien <a> préservé)
+    if (coverData && coverData.src) {
+      const coverWrap = document.createElement("a");
+      coverWrap.className = "lgsp-gallery-item lgsp-gallery-cover";
+      coverWrap.href = coverData.href || findCardLink(card) || "#";
+      coverWrap.title = coverData.alt || "Ouvrir la fiche du jeu";
+
+      const coverImg = document.createElement("img");
+      coverImg.src = coverData.src;
+      coverImg.alt = coverData.alt || "Jaquette";
+      coverImg.loading = "lazy";
+      coverWrap.appendChild(coverImg);
+
+      const coverTag = document.createElement("span");
+      coverTag.className = "lgsp-item-tag lgsp-tag-cover";
+      coverTag.textContent = "Jaquette";
+      coverWrap.appendChild(coverTag);
+
+      gallery.appendChild(coverWrap);
+    }
+
+    // 2. Vidéos et captures d'écran
+    mediaItems.forEach((item) => {
+      const itemWrap = document.createElement("div");
+      itemWrap.className = "lgsp-gallery-item";
+
+      const renderInitialContent = () => {
+        itemWrap.innerHTML = "";
+        itemWrap.classList.remove("lgsp-playing-inline");
+
+        const img = document.createElement("img");
+        img.src = item.thumbnail || item.src;
+        img.loading = "lazy";
+        img.alt = item.title || "Capture";
+        itemWrap.appendChild(img);
+
+        if (item.type === "youtube" || item.type === "steam_movie") {
+          itemWrap.classList.add("lgsp-gallery-video");
+          const playBtn = document.createElement("span");
+          playBtn.className = "lgsp-play-badge";
+          playBtn.innerHTML = `▶ ${item.type === "youtube" ? "YouTube" : "Trailer"}`;
+          itemWrap.appendChild(playBtn);
+        }
+      };
+
+      renderInitialContent();
+
+      if (item.type === "youtube" || item.type === "steam_movie") {
+        let hoverTimer = null;
+        let isPlayingPreview = false;
+
+        const startPreview = () => {
+          if (isPlayingPreview) return;
+          isPlayingPreview = true;
+          itemWrap.innerHTML = "";
+          itemWrap.classList.add("lgsp-playing-inline");
+
+          if (item.type === "youtube") {
+            const iframe = document.createElement("iframe");
+            iframe.src = `https://www.youtube-nocookie.com/embed/${item.id}?autoplay=1&mute=1&controls=0&modestbranding=1&loop=1`;
+            iframe.setAttribute("allow", "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture");
+            iframe.setAttribute("allowfullscreen", "true");
+            iframe.className = "lgsp-gallery-embed";
+            itemWrap.appendChild(iframe);
+          } else if (item.type === "steam_movie") {
+            const video = document.createElement("video");
+            video.controls = false;
+            video.autoplay = true;
+            video.muted = true;
+            video.playsInline = true;
+            video.className = "lgsp-gallery-embed";
+            attachVideoSource(video, item);
+            itemWrap.appendChild(video);
+          }
+
+          // Overlay transparent pour capter le clic utilisateur et ouvrir la Lightbox
+          const clickOverlay = document.createElement("div");
+          clickOverlay.className = "lgsp-video-click-overlay";
+          itemWrap.appendChild(clickOverlay);
+        };
+
+        const stopPreview = () => {
+          if (hoverTimer) {
+            clearTimeout(hoverTimer);
+            hoverTimer = null;
+          }
+          if (isPlayingPreview) {
+            isPlayingPreview = false;
+            const v = itemWrap.querySelector("video");
+            if (v) {
+              if (v._hls) v._hls.destroy();
+              v.pause();
+              v.removeAttribute("src");
+              v.load();
+            }
+            renderInitialContent();
+          }
+        };
+
+        itemWrap.addEventListener("mouseenter", () => {
+          hoverTimer = setTimeout(() => {
+            startPreview();
+          }, 300);
+        });
+
+        itemWrap.addEventListener("mouseleave", () => {
+          stopPreview();
+        });
+
+        // Clic sur la vignette ouvre le lecteur en grand dans la Lightbox
+        itemWrap.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          stopPreview();
+          openLightbox(item);
+        });
+      } else {
+        itemWrap.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          openLightbox(item);
+        });
+      }
+
+      gallery.appendChild(itemWrap);
+    });
+
+    if (gallery.children.length === 0) {
       const empty = document.createElement("div");
       empty.className = "lgsp-status";
-      empty.textContent = "Aucune capture trouvée";
+      empty.textContent = "Aucun média trouvé";
       card.appendChild(empty);
       return;
     }
 
-    const gallery = document.createElement("div");
-    gallery.className = "lgsp-gallery";
-    urls.forEach((src) => {
-      const img = document.createElement("img");
-      img.src = src;
-      img.loading = "lazy";
-      img.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        openLightbox(src);
-      });
-      gallery.appendChild(img);
+    const container = document.createElement("div");
+    container.className = "lgsp-gallery-container";
+
+    const prevBtn = document.createElement("button");
+    prevBtn.className = "lgsp-carousel-arrow lgsp-arrow-prev lgsp-hidden";
+    prevBtn.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>`;
+    prevBtn.setAttribute("aria-label", "Précédent");
+
+    const nextBtn = document.createElement("button");
+    nextBtn.className = "lgsp-carousel-arrow lgsp-arrow-next lgsp-hidden";
+    nextBtn.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>`;
+    nextBtn.setAttribute("aria-label", "Suivant");
+
+    const track = document.createElement("div");
+    track.className = "lgsp-gallery-track";
+
+    track.appendChild(gallery);
+    container.appendChild(prevBtn);
+    container.appendChild(track);
+    container.appendChild(nextBtn);
+
+    let currentIndex = 0;
+
+    function getColumns() {
+      return Math.max(1, parseInt(getComputedStyle(document.documentElement).getPropertyValue("--lgsp-gallery-columns") || "3", 10));
+    }
+
+    function getRows() {
+      return Math.max(1, parseInt(getComputedStyle(document.documentElement).getPropertyValue("--lgsp-gallery-rows") || "2", 10));
+    }
+
+    function updateArrows() {
+      const maxScroll = track.scrollWidth - track.clientWidth;
+      if (maxScroll <= 2) {
+        prevBtn.classList.add("lgsp-hidden");
+        nextBtn.classList.add("lgsp-hidden");
+      } else {
+        prevBtn.classList.toggle("lgsp-hidden", track.scrollLeft <= 2);
+        nextBtn.classList.toggle("lgsp-hidden", track.scrollLeft >= maxScroll - 4);
+      }
+    }
+
+    track.addEventListener("scroll", () => {
+      updateArrows();
+      const firstItem = gallery.children[0];
+      if (firstItem && firstItem.offsetWidth > 0) {
+        const itemWidth = firstItem.offsetWidth + 6;
+        const colsScrolled = Math.round(track.scrollLeft / itemWidth);
+        const rows = getRows();
+        currentIndex = colsScrolled * rows;
+      }
+    }, { passive: true });
+
+    prevBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const cols = getColumns();
+      const rows = getRows();
+      const batch = cols * rows;
+      currentIndex = Math.max(0, currentIndex - batch);
+      const targetItem = gallery.children[currentIndex];
+      if (targetItem) {
+        track.scrollTo({ left: targetItem.offsetLeft, behavior: "smooth" });
+      } else {
+        track.scrollBy({ left: -track.clientWidth, behavior: "smooth" });
+      }
+      setTimeout(updateArrows, 80);
+      setTimeout(updateArrows, 350);
     });
-    card.appendChild(gallery);
+
+    nextBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const cols = getColumns();
+      const rows = getRows();
+      const batch = cols * rows;
+      const total = gallery.children.length;
+      currentIndex = Math.min(total - 1, currentIndex + batch);
+      const targetItem = gallery.children[currentIndex];
+      if (targetItem) {
+        track.scrollTo({ left: targetItem.offsetLeft, behavior: "smooth" });
+      } else {
+        track.scrollBy({ left: track.clientWidth, behavior: "smooth" });
+      }
+      setTimeout(updateArrows, 80);
+      setTimeout(updateArrows, 350);
+    });
+
+    card.appendChild(container);
+
+    requestAnimationFrame(() => {
+      updateArrows();
+    });
   }
 
-  async function loadScreenshotsForCard(card) {
+  // --- Chargement et orchestration par carte ---------------------------------
+
+  async function loadMediaForCard(card) {
     const link = findCardLink(card);
     if (!link) return;
 
@@ -444,29 +780,102 @@
 
     const status = document.createElement("div");
     status.className = "lgsp-status";
-    status.textContent = "Chargement des captures...";
+    status.textContent = "Chargement des médias...";
     card.appendChild(status);
 
     try {
-      let urls = screenshotCache.get(link);
+      // Récupération de la jaquette mémorisée lors du nettoyage de la carte
+      let coverData = card._lgspCoverData || null;
+
+      let cached = detailCache.get(link);
+      let pageScreenshots = [];
+      let pageVideos = [];
       let steamInfo = null;
-      if (!urls) {
+
+      if (cached) {
+        pageScreenshots = cached.pageScreenshots;
+        pageVideos = cached.pageVideos;
+        steamInfo = cached.steamInfo;
+      } else {
         const res = await fetch(link, { credentials: "include" });
         const html = await res.text();
         const doc = new DOMParser().parseFromString(html, "text/html");
-        urls = extractScreenshots(doc);
-        screenshotCache.set(link, urls);
 
-        // Extraction du lien Steam depuis la page détail (même fetch,
-        // pas de requête supplémentaire).
+        // Si la jaquette n'a pas été trouvée sur la liste, on la cherche sur la page détail
+        if (!coverData) {
+          const coverImgEl = doc.querySelector("img.aligncenter");
+          if (coverImgEl) {
+            coverData = {
+              src: coverImgEl.getAttribute("src") || "",
+              alt: coverImgEl.getAttribute("alt") || "",
+              href: link,
+            };
+          }
+        }
+
+        const coverSrc = coverData ? coverData.src : null;
+        pageScreenshots = extractScreenshots(doc, coverSrc);
+        pageVideos = extractYouTubeVideos(doc);
         steamInfo = extractSteamInfo(doc);
-      }
-      renderGallery(card, urls);
 
-      // Vérification de la langue FR via le background script.
+        detailCache.set(link, { pageScreenshots, pageVideos, steamInfo });
+      }
+
+      // Récupération des données Steam enrichies
+      let steamData = null;
       if (steamInfo && steamInfo.appId) {
-        const langResult = await requestSteamLangInfo(steamInfo.appId);
-        renderSteamInfo(card, steamInfo.steamUrl, langResult.frenchStatus);
+        steamData = await requestSteamGameInfo(steamInfo.appId);
+      }
+
+      // Construction de la liste multimédia combinée (Vidéos + Captures)
+      const combinedMedia = [];
+
+      // A. Vidéos YouTube trouvées sur la page
+      pageVideos.forEach((v) => combinedMedia.push(v));
+
+      // B. Trailers Steam si disponibles
+      if (steamData && Array.isArray(steamData.movies)) {
+        steamData.movies.forEach((m) => {
+          if (m.hls || m.mp4 || m.webm || m.thumbnail) {
+            combinedMedia.push({
+              type: "steam_movie",
+              thumbnail: m.thumbnail,
+              hls: m.hls,
+              mp4: m.mp4,
+              webm: m.webm,
+              title: m.name || "Bande-annonce Steam",
+            });
+          }
+        });
+      }
+
+      // C. Captures d'écran de la page détail
+      pageScreenshots.forEach((src) => {
+        combinedMedia.push({ type: "image", src, thumbnail: src });
+      });
+
+      // D. Captures d'écran HD supplémentaires de Steam
+      if (steamData && Array.isArray(steamData.screenshots)) {
+        steamData.screenshots.forEach((s) => {
+          // Évite d'ajouter si déjà présent
+          if (!combinedMedia.some((m) => isSameImageUrl(m.thumbnail || m.src, s.thumbnail) || isSameImageUrl(m.src, s.full))) {
+            combinedMedia.push({
+              type: "image",
+              src: s.full,
+              thumbnail: s.thumbnail,
+              title: "Capture Steam",
+            });
+          }
+        });
+      }
+
+      // Limitation selon le réglage de la popup et rendu
+      const maxAllowed = (lastSettings && lastSettings.maxTotalScreenshots) || DEFAULTS.maxTotalScreenshots;
+      const finalMedia = combinedMedia.slice(0, maxAllowed);
+      renderGallery(card, finalMedia, coverData);
+
+      if (steamInfo && steamInfo.steamUrl) {
+        renderSteamInfo(card, steamInfo.steamUrl, steamData);
       }
     } catch (err) {
       status.textContent = "Erreur de chargement";
@@ -480,15 +889,12 @@
         if (!entry.isIntersecting) return;
         const card = entry.target;
         observer.unobserve(card);
-        loadScreenshotsForCard(card);
+        loadMediaForCard(card);
       });
     },
     { rootMargin: "200px" }
   );
 
-  // Force une carte par ligne. Comme on ne connaît pas la structure exacte
-  // du conteneur de grille de chaque site, on agit directement sur la carte
-  // elle-même en inline !important (bat n'importe quelle feuille de style).
   function enforceSingleColumnLayout(card) {
     card.style.setProperty("display", "block", "important");
     card.style.setProperty("width", "100%", "important");
@@ -498,23 +904,28 @@
     card.classList.add("lgsp-card");
   }
 
-  // --- Nettoyage spécifique SkidrowReloaded --------------------------------
-  // Le thème du site décore chaque annonce avec la ligne "GROUPE – TYPE DE
-  // LIEN – TORRENT", un synopsis tronqué, souvent un paragraphe vide
-  // superflu, et un pied de carte "Read More" / commentaires. Sur demande,
-  // on retire tout ce texte/footer et on ne garde que la vignette (dans
-  // ".post-excerpt") : le reste de l'information est de toute façon déjà
-  // disponible via le titre de la carte et la galerie de captures.
+  // --- Nettoyage spécifique SkidrowReloaded (Réduction verticale & Jaquette) ---
 
-  function stripExcerptText(card) {
+  function extractAndCleanCover(card) {
     const excerpt = card.querySelector(".post-excerpt");
     if (!excerpt) return;
-    excerpt.querySelectorAll("p").forEach((p) => {
-      // On garde le paragraphe s'il contient la vignette du jeu ; seul le
-      // texte (tags de release, synopsis, paragraphes vides) est retiré.
-      if (p.querySelector("img")) return;
-      p.remove();
-    });
+
+    // Récupérer la jaquette originale <a href="..."><img class="aligncenter" ...></a>
+    const linkEl = excerpt.querySelector("a:has(img), p > a, a");
+    const imgEl = excerpt.querySelector("img.aligncenter, img");
+
+    if (imgEl) {
+      const src = imgEl.getAttribute("src") || imgEl.getAttribute("data-src") || "";
+      const alt = imgEl.getAttribute("alt") || "";
+      const href = linkEl ? linkEl.getAttribute("href") : findCardLink(card);
+
+      if (src && !BLACKLIST_SUBSTR.some((b) => src.includes(b))) {
+        card._lgspCoverData = { src, alt, href };
+      }
+    }
+
+    // Supprimer .post-excerpt du DOM pour éliminer toute la hauteur superflue
+    excerpt.remove();
   }
 
   function removeFooterMeta(card) {
@@ -523,7 +934,7 @@
   }
 
   function enhanceCard(card) {
-    stripExcerptText(card);
+    extractAndCleanCover(card);
     removeFooterMeta(card);
   }
 
@@ -531,9 +942,9 @@
     document.querySelectorAll(`${cardSel}`).forEach((card) => {
       if (!card.hasAttribute(PROCESSED_ATTR)) {
         enforceSingleColumnLayout(card);
+        if (config.enhanceCard) enhanceCard(card);
         observer.observe(card);
       }
-      if (config.enhanceCard) enhanceCard(card);
     });
   }
 

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Game Sites - Aperçu Screenshots",
-  "version": "1.3.0",
+  "version": "1.5.0",
   "description": "Affiche les captures d'écran d'un jeu directement sous sa carte sur SkidrowReloaded, IGG-Games et PCGamesTorrents.",
   "permissions": ["storage"],
   "host_permissions": [
@@ -36,7 +36,7 @@
         "https://igg-games.com/*",
         "https://pcgamestorrents.com/*"
       ],
-      "js": ["content.js"],
+      "js": ["hls.min.js", "content.js"],
       "css": ["style.css"],
       "run_at": "document_idle"
     }

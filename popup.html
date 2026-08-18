@@ -20,10 +20,28 @@
   <div id="fields">
     <div class="field">
       <div class="field-label">
-        <label for="galleryColumns">Screenshots par ligne</label>
+        <label for="galleryColumns">Nombre de ligne</label>
         <span class="value" id="galleryColumnsValue">3</span>
       </div>
       <input type="range" id="galleryColumns" min="1" max="8" step="1">
+    </div>
+
+    <div class="field">
+      <div class="field-label">
+        <label for="galleryRows">Screenshots par colone</label>
+        <span class="value" id="galleryRowsValue">2</span>
+      </div>
+      <input type="range" id="galleryRows" min="1" max="4" step="1">
+    </div>
+
+    <hr>
+
+    <div class="field">
+      <div class="field-label">
+        <label for="maxTotalScreenshots">Limite max. de captures</label>
+        <span class="value" id="maxTotalScreenshotsValue">30</span>
+      </div>
+      <input type="range" id="maxTotalScreenshots" min="3" max="50" step="1">
     </div>
 
     <hr>
