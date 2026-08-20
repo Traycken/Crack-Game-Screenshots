@@ -8,7 +8,8 @@
     "https://www.skidrowreloaded.com/*",
     "https://igg-games.com/*",
     "https://pcgamestorrents.com/*",
-    "https://store.steampowered.com/*"
+    "https://store.steampowered.com/*",
+    "https://steamcommunity.com/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -38,6 +39,16 @@
       ],
       "js": ["hls.min.js", "content.js"],
       "css": ["style.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://steamcommunity.com/id/*/games*",
+        "https://steamcommunity.com/profiles/*/games*",
+        "https://steamcommunity.com/my/games*",
+        "https://store.steampowered.com/wishlist*"
+      ],
+      "js": ["steam-sync-content.js"],
       "run_at": "document_idle"
     }
   ],

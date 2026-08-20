@@ -122,11 +122,112 @@ function showSite(host) {
   loadSettings();
 }
 
+function initSteamSync() {
+  const input = document.getElementById("steamUserInput");
+  const btn = document.getElementById("steamSyncBtn");
+  const status = document.getElementById("steamStatus");
+
+  if (!input || !btn || !status) return;
+
+  const showStatus = (type, html) => {
+    status.className = `steam-status ${type}`;
+    status.innerHTML = html;
+    status.hidden = false;
+  };
+
+  // Chargement des données déjà enregistrées
+  chrome.storage.local.get(
+    ["steamUserQuery", "steamUsername", "steamWishlist", "steamOwned", "steamLastSync"],
+    (data) => {
+      if (data.steamUserQuery) {
+        input.value = data.steamUserQuery;
+      }
+      if (Array.isArray(data.steamWishlist) || Array.isArray(data.steamOwned)) {
+        const wCount = data.steamWishlist?.length || 0;
+        const oCount = data.steamOwned?.length || 0;
+        const dateStr = data.steamLastSync
+          ? new Date(data.steamLastSync).toLocaleDateString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+          : "";
+        showStatus(
+          "success",
+          `✅ <strong>${data.steamUsername || "Profil"}</strong> synchronisé :<br>` +
+          `⭐ <strong>${wCount}</strong> dans la Wishlist<br>` +
+          `🎮 <strong>${oCount}</strong> dans la Bibliothèque` +
+          (dateStr ? `<br><small style="opacity:0.75">Dernière sync: ${dateStr}</small>` : "")
+        );
+      }
+    }
+  );
+
+  const doSync = () => {
+    const val = input.value.trim();
+    if (!val) {
+      showStatus("error", "Veuillez entrer votre pseudo Steam ou l'URL de votre profil.");
+      return;
+    }
+
+    btn.disabled = true;
+    showStatus("loading", "⏳ Synchronisation de la Wishlist et des jeux possédés...");
+
+    chrome.runtime.sendMessage({ type: "SYNC_STEAM_DATA", input: val }, (res) => {
+      btn.disabled = false;
+      if (chrome.runtime.lastError) {
+        showStatus("error", `Erreur : ${chrome.runtime.lastError.message}`);
+        return;
+      }
+      if (!res || !res.success) {
+        showStatus("error", `❌ ${res?.error || "Échec de la synchronisation."}`);
+        return;
+      }
+
+      const tipOwned = res.ownedCount === 0
+        ? `<br><small style="display:block;margin-top:6px;opacity:0.85;color:#fcd34d">💡 Pour synchroniser votre bibliothèque : cliquez ci-dessous sur <strong>« Ouvrir ma page de jeux Steam »</strong>.</small>`
+        : "";
+
+      showStatus(
+        "success",
+        `✅ <strong>${res.username}</strong> synchronisé !<br>` +
+        `⭐ <strong>${res.wishlistCount}</strong> dans la Wishlist<br>` +
+        `🎮 <strong>${res.ownedCount}</strong> dans la Bibliothèque` +
+        tipOwned
+      );
+    });
+  };
+
+  btn.addEventListener("click", doSync);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") doSync();
+  });
+
+  const openGamesBtn = document.getElementById("steamOpenGamesBtn");
+  if (openGamesBtn) {
+    openGamesBtn.addEventListener("click", () => {
+      const val = input.value.trim();
+      let targetUrl = "https://steamcommunity.com/my/games/?tab=all";
+      if (val) {
+        if (val.startsWith("http")) {
+          targetUrl = val.includes("/games") ? val : `${val.replace(/\/+$/, "")}/games/?tab=all`;
+        } else if (/^\d{17}$/.test(val)) {
+          targetUrl = `https://steamcommunity.com/profiles/${val}/games/?tab=all`;
+        } else {
+          targetUrl = `https://steamcommunity.com/id/${val}/games/?tab=all`;
+        }
+      }
+      // Autoriser la synchronisation pour cette ouverture explicite
+      chrome.storage.local.set({ steamSyncAuthorizedAt: Date.now() }, () => {
+        const separator = targetUrl.includes("#") ? "&" : "#";
+        chrome.tabs.create({ url: `${targetUrl}${separator}lgsp_sync=1` });
+      });
+    });
+  }
+}
+
 function init() {
   // Les 3 boutons doivent être utilisables immédiatement, indépendamment du
   // site actuellement ouvert (voire même si l'onglet actif n'est pas l'un
   // des 3 sites gérés) ; pas besoin d'attendre la résolution de l'onglet.
   renderSiteLinks(null);
+  initSteamSync();
 
   if (!chrome.tabs || !chrome.tabs.query) {
     showUnsupported();

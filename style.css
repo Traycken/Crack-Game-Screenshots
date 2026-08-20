@@ -19,8 +19,11 @@
    Thème sobre graphite + accent laiton.
    ===================================================================== */
 
-html.lgsp-skidrow-listing #overall-container {
+html.lgsp-skidrow-listing {
     --lgsp-sr-bg: #1b1d22;
+    --lgsp-sr-page-bg: #121316;
+    --lgsp-sr-header-bg: #16181d;
+    --lgsp-sr-footer-bg: #141518;
     --lgsp-sr-border: rgba(255, 255, 255, 0.08);
     --lgsp-sr-border-strong: rgba(255, 255, 255, 0.18);
     --lgsp-sr-text: #e7e8ec;
@@ -29,6 +32,45 @@ html.lgsp-skidrow-listing #overall-container {
     --lgsp-sr-accent-soft: rgba(207, 159, 79, 0.14);
     --lgsp-sr-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
     font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+/* --- Remplacement des textures .jpg par du gris sombre sobre --- */
+
+/* 1. page-bg.jpg -> Fond général de page */
+html.lgsp-skidrow-listing,
+html.lgsp-skidrow-listing body,
+html.lgsp-skidrow-listing #page-wrap {
+    background-color: var(--lgsp-sr-page-bg) !important;
+    background-image: none !important;
+}
+
+/* 2. header.jpg -> Fond de l'en-tête et navigation */
+html.lgsp-skidrow-listing #header,
+html.lgsp-skidrow-listing #header-wrap,
+html.lgsp-skidrow-listing #nav {
+    background-color: var(--lgsp-sr-header-bg) !important;
+    background-image: none !important;
+}
+
+/* 3. post-bg.jpg -> Fond des cartes de jeux */
+html.lgsp-skidrow-listing .post,
+html.lgsp-skidrow-listing #overall-container .post {
+    background-color: var(--lgsp-sr-bg) !important;
+    background-image: none !important;
+}
+
+/* 4. widget-bg.jpg -> Fond des widgets */
+html.lgsp-skidrow-listing .widget,
+html.lgsp-skidrow-listing #sidebar .widget {
+    background-color: var(--lgsp-sr-bg) !important;
+    background-image: none !important;
+}
+
+/* 5. footer.jpg -> Fond du pied de page */
+html.lgsp-skidrow-listing #footer,
+html.lgsp-skidrow-listing #footer-wrap {
+    background-color: var(--lgsp-sr-footer-bg) !important;
+    background-image: none !important;
 }
 
 /* --- Carte de jeu ---------------------------------------------------- */
@@ -145,6 +187,73 @@ html.lgsp-skidrow-listing #overall-container .post-excerpt {
     border: 1px solid transparent;
 }
 
+/* Wishlist & Bibliothèque Steam : Grandes bannières centrées au-dessus */
+.lgsp-wishlist-banner {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    width: 100% !important;
+    margin: 10px auto 14px auto !important;
+    text-align: center !important;
+    clear: both !important;
+}
+
+.lgsp-wishlist-badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    padding: 8px 24px !important;
+    border-radius: 999px !important;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.28), rgba(217, 119, 6, 0.2)) !important;
+    border: 1.5px solid #f59e0b !important;
+    color: #fbbf24 !important;
+    font-size: 0.95em !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.05em !important;
+    text-transform: uppercase !important;
+    box-shadow: 0 4px 16px rgba(245, 158, 11, 0.3) !important;
+    animation: lgsp-wishlist-pulse 3s infinite ease-in-out !important;
+}
+
+@keyframes lgsp-wishlist-pulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 4px 16px rgba(245, 158, 11, 0.3);
+    }
+    50% {
+        transform: scale(1.03);
+        box-shadow: 0 6px 22px rgba(245, 158, 11, 0.5);
+    }
+}
+
+.lgsp-owned-banner {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    width: 100% !important;
+    margin: 10px auto 14px auto !important;
+    text-align: center !important;
+    clear: both !important;
+}
+
+.lgsp-owned-badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    padding: 8px 24px !important;
+    border-radius: 999px !important;
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.28), rgba(2, 132, 199, 0.2)) !important;
+    border: 1.5px solid #38bdf8 !important;
+    color: #38bdf8 !important;
+    font-size: 0.95em !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.05em !important;
+    text-transform: uppercase !important;
+    box-shadow: 0 4px 16px rgba(14, 165, 233, 0.3) !important;
+}
+
 /* Avis des joueurs */
 .lgsp-rev-positive {
     background: rgba(34, 197, 94, 0.12);
@@ -183,7 +292,16 @@ html.lgsp-skidrow-listing #overall-container .post-excerpt {
     border-color: rgba(100, 116, 139, 0.22);
 }
 
-/* Modes de jeu */
+/* Modes de jeu (ligne dédiée) */
+.lgsp-steam-modes-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 4px 0 2px 0;
+}
+
 .lgsp-mode-badge {
     background: rgba(99, 102, 241, 0.10);
     color: #4f46e5;
@@ -555,6 +673,151 @@ html.lgsp-skidrow-listing #overall-container .lgsp-gallery-container {
     background: transparent;
 }
 
+/* Curseur de volume flottant sur les prévisualisations vidéo */
+.lgsp-hover-vol-control {
+    position: absolute;
+    bottom: 14px;
+    right: 8px;
+    z-index: 25;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(18, 20, 24, 0.9);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    opacity: 0.95;
+    transition: opacity 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+    cursor: default;
+}
+
+.lgsp-hover-vol-control:hover {
+    opacity: 1;
+    transform: scale(1.04);
+    border-color: var(--lgsp-sr-accent, #cf9f4f);
+}
+
+.lgsp-hover-vol-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: #e7e8ec;
+    cursor: pointer;
+    line-height: 1;
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    transition: color 0.15s ease;
+}
+
+.lgsp-hover-vol-btn:hover {
+    color: var(--lgsp-sr-accent, #cf9f4f);
+}
+
+.lgsp-hover-vol-slider {
+    width: 55px;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+}
+
+.lgsp-hover-vol-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #cf9f4f;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    transition: transform 0.1s ease;
+}
+
+.lgsp-hover-vol-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.25);
+}
+
+.lgsp-hover-vol-slider::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #cf9f4f;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* Barre de progression interactive sur les prévisualisations vidéo */
+.lgsp-hover-progress-wrap {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 14px;
+    z-index: 25;
+    display: flex;
+    align-items: flex-end;
+    cursor: pointer;
+    padding: 0 0 2px 0;
+    box-sizing: border-box;
+}
+
+.lgsp-hover-progress-track {
+    position: relative;
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(4px);
+    transition: height 0.15s ease;
+    overflow: visible;
+}
+
+.lgsp-hover-progress-wrap:hover .lgsp-hover-progress-track,
+.lgsp-hover-progress-wrap.lgsp-scrubbing .lgsp-hover-progress-track {
+    height: 6px;
+}
+
+.lgsp-hover-progress-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 0%;
+    background: var(--lgsp-sr-accent, #cf9f4f);
+    border-radius: 0 2px 2px 0;
+    pointer-events: none;
+}
+
+.lgsp-hover-progress-handle {
+    position: absolute;
+    top: 50%;
+    left: 0%;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+    transform: translate(-50%, -50%) scale(0);
+    transition: transform 0.15s ease;
+    pointer-events: none;
+}
+
+.lgsp-hover-progress-wrap:hover .lgsp-hover-progress-handle,
+.lgsp-hover-progress-wrap.lgsp-scrubbing .lgsp-hover-progress-handle {
+    transform: translate(-50%, -50%) scale(1);
+}
+
 /* =====================================================================
    Lightbox (Support Images et Vidéos)
    ===================================================================== */
@@ -624,116 +887,269 @@ html.lgsp-skidrow-listing #overall-container .lgsp-gallery-container {
 }
 
 /* =====================================================================
-   Sidebar & Widgets SkidrowReloaded
+   Centrage du Header SkidrowReloaded
    ===================================================================== */
 
-html.lgsp-skidrow-listing #overall-container #sidebar .widget {
-    background: var(--lgsp-sr-bg);
-    border: 1px solid var(--lgsp-sr-border);
-    border-radius: 10px;
-    padding: 16px 18px;
+html.lgsp-skidrow-listing #header {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 auto 10px auto !important;
+    float: none !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    text-align: center !important;
+    height: auto !important;
+    min-height: 0 !important;
+    position: relative !important;
+    overflow: visible !important;
 }
 
-html.lgsp-skidrow-listing #overall-container #sidebar .widget h3 {
-    margin: 0 0 12px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--lgsp-sr-border);
-    font-size: 0.72em;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--lgsp-sr-accent);
+html.lgsp-skidrow-listing #header #logo {
+    order: 1 !important;
+    float: none !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    margin: 0 auto 12px auto !important;
+    text-align: center !important;
+    width: 100% !important;
+    position: static !important;
 }
 
-html.lgsp-skidrow-listing #overall-container #search-1 form {
-    position: relative;
+html.lgsp-skidrow-listing #header #logo a,
+html.lgsp-skidrow-listing #header #logo img {
+    display: block !important;
+    margin: 0 auto !important;
+    float: none !important;
 }
 
-html.lgsp-skidrow-listing #overall-container #search-1 #searchbar {
-    width: 100%;
-    box-sizing: border-box;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--lgsp-sr-border);
-    border-radius: 8px;
-    padding: 9px 34px 9px 12px;
-    color: var(--lgsp-sr-text);
-    font-size: 0.85em;
+html.lgsp-skidrow-listing #header #communication {
+    order: 2 !important;
+    float: none !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 12px !important;
+    margin: 0 auto 16px auto !important;
+    position: static !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    width: 100% !important;
 }
 
-html.lgsp-skidrow-listing #overall-container #search-1 #searchbar:focus {
-    outline: none;
-    border-color: var(--lgsp-sr-accent);
+html.lgsp-skidrow-listing #header #communication a,
+html.lgsp-skidrow-listing #header #communication img {
+    float: none !important;
+    display: inline-block !important;
 }
 
-html.lgsp-skidrow-listing #overall-container #search-1 #searchsubmit {
-    display: none;
+html.lgsp-skidrow-listing #header #nav {
+    order: 3 !important;
+    float: none !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    text-align: center !important;
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    clear: both !important;
+    height: auto !important;
 }
 
-html.lgsp-skidrow-listing #overall-container #search-1 form::after {
-    content: "";
-    position: absolute;
-    right: 12px;
-    top: 50%;
-    width: 13px;
-    height: 13px;
-    transform: translateY(-50%);
-    opacity: 0.5;
-    pointer-events: none;
-    background-color: var(--lgsp-sr-text);
-    -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg>') no-repeat center / contain;
-    mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg>') no-repeat center / contain;
+html.lgsp-skidrow-listing #header #nav ul#menu-menu {
+    float: none !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    align-items: center !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    list-style: none !important;
+    width: 100% !important;
 }
 
-html.lgsp-skidrow-listing #overall-container #text-33 .textwidget p {
-    margin: 0;
-    padding: 9px 0;
-    border-bottom: 1px solid var(--lgsp-sr-border);
-    color: var(--lgsp-sr-text-dim);
-    font-size: 0.82em;
-    line-height: 1.6;
+html.lgsp-skidrow-listing #header #nav ul#menu-menu > li {
+    float: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    position: relative !important;
 }
 
-html.lgsp-skidrow-listing #overall-container #text-33 .textwidget p:last-child {
-    border-bottom: none;
+/* =====================================================================
+   Barre de recherche SkidrowReloaded & Éléments masqués
+   ===================================================================== */
+
+html.lgsp-skidrow-listing #sidebar,
+html.lgsp-skidrow-listing #text-33,
+html.lgsp-skidrow-listing #text-3 {
+    display: none !important;
 }
 
-html.lgsp-skidrow-listing #overall-container #text-33 .textwidget p::first-line {
-    color: var(--lgsp-sr-text);
-    font-weight: 600;
+html.lgsp-skidrow-listing #search-1 {
+    order: 4 !important;
+    display: block !important;
+    float: none !important;
+    clear: both !important;
+    width: 100% !important;
+    max-width: 650px !important;
+    margin: 32px auto 16px auto !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 16px !important;
+    box-sizing: border-box !important;
+    position: relative !important;
 }
 
-html.lgsp-skidrow-listing #overall-container #text-3 .textwidget p {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-    margin: 0;
+html.lgsp-skidrow-listing #search-1 h3 {
+    display: none !important;
 }
 
-html.lgsp-skidrow-listing #overall-container #text-3 .textwidget br {
-    display: none;
+html.lgsp-skidrow-listing #search-1 form {
+    position: relative !important;
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    float: none !important;
+    clear: both !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
 }
 
-html.lgsp-skidrow-listing #overall-container #text-3 .textwidget a {
-    display: block;
-    border-radius: 8px;
-    overflow: hidden;
-    border: 1px solid var(--lgsp-sr-border);
+html.lgsp-skidrow-listing #search-1 #searchbar {
+    flex: 1 1 auto !important;
+    width: 100% !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    box-sizing: border-box !important;
+    background: var(--lgsp-sr-bg) !important;
+    border: 1px solid var(--lgsp-sr-border) !important;
+    border-radius: 10px !important;
+    padding: 0 16px !important;
+    color: var(--lgsp-sr-text) !important;
+    font-size: 0.95em !important;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+    margin: 0 !important;
 }
 
-html.lgsp-skidrow-listing #overall-container #text-3 .textwidget img {
-    display: block;
-    width: 100%;
-    height: 68px;
-    object-fit: cover;
-    transition: transform 0.2s ease;
+html.lgsp-skidrow-listing #search-1 #searchbar:focus {
+    outline: none !important;
+    border-color: var(--lgsp-sr-accent) !important;
+    box-shadow: 0 0 0 2px var(--lgsp-sr-accent-soft) !important;
 }
 
-html.lgsp-skidrow-listing #overall-container #text-3 .textwidget a:hover img {
-    transform: scale(1.06);
+html.lgsp-skidrow-listing #search-1 #lgsp-search-btn {
+    flex: 0 0 auto !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    padding: 0 20px !important;
+    border-radius: 10px !important;
+    background: var(--lgsp-sr-accent) !important;
+    color: #1b1d22 !important;
+    border: 1px solid rgba(0, 0, 0, 0.2) !important;
+    font-size: 0.9em !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.02em !important;
+    cursor: pointer !important;
+    box-sizing: border-box !important;
+    transition: background 0.15s ease, transform 0.15s ease, opacity 0.15s ease !important;
+}
+
+html.lgsp-skidrow-listing #search-1 #lgsp-search-btn:hover {
+    background: #e2b365 !important;
+    transform: translateY(-1px) !important;
+}
+
+html.lgsp-skidrow-listing #search-1 #lgsp-search-btn svg {
+    flex-shrink: 0 !important;
+    display: block !important;
+}
+
+html.lgsp-skidrow-listing #search-1 form::after {
+    display: none !important;
+    content: none !important;
+}
+
+/* =====================================================================
+   Centrage Pagination & Footer SkidrowReloaded
+   ===================================================================== */
+
+html.lgsp-skidrow-listing .wp-pagenavi {
+    width: 100% !important;
+    float: none !important;
+    clear: both !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    align-items: center !important;
+    text-align: center !important;
+    margin: 32px auto 24px auto !important;
+    gap: 6px !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+}
+
+html.lgsp-skidrow-listing .wp-pagenavi a,
+html.lgsp-skidrow-listing .wp-pagenavi span {
+    float: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 2px !important;
+}
+
+html.lgsp-skidrow-listing #footer {
+    width: 100% !important;
+    float: none !important;
+    clear: both !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    margin: 32px auto 20px auto !important;
+    padding: 20px 0 !important;
+    box-sizing: border-box !important;
+}
+
+html.lgsp-skidrow-listing #footer * {
+    float: none !important;
+    text-align: center !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
 }
 
 .lgsp-status {
     font-size: 0.75em;
     opacity: 0.6;
     padding: 6px 0;
+}
+
+/* Blocage strict des fausses notices et overlays intrusifs */
+#closeNoticeBtn,
+div:has(> div > #closeNoticeBtn),
+div:has(> #closeNoticeBtn),
+div[style*="z-index: 999999"]:not(.lgsp-lightbox-overlay):not(#lgsp-steam-sync-notif) {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    position: absolute !important;
+    left: -9999px !important;
 }

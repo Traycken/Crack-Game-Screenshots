@@ -54,7 +54,21 @@
       <input type="range" id="maxContentWidth" min="20" max="100" step="0.1">
     </div>
 
-    <button id="resetBtn">Réinitialiser</button>
+    <button id="resetBtn">Réinitialiser les réglages</button>
+  </div>
+
+  <div class="steam-section">
+    <h2>Compte Steam</h2>
+    <p class="steam-help">Récupère votre Wishlist et vos jeux possédés (profil public requis).</p>
+    
+    <div class="steam-input-row">
+      <input type="text" id="steamUserInput" placeholder="Pseudo ou lien de profil...">
+      <button type="button" id="steamSyncBtn">Sync</button>
+    </div>
+
+    <button type="button" id="steamOpenGamesBtn" class="steam-open-btn">🎮 Ouvrir ma page de jeux Steam</button>
+
+    <div id="steamStatus" class="steam-status" hidden></div>
   </div>
 
   <script src="popup.js"></script>

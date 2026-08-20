@@ -13,6 +13,36 @@
     "icon-facebook.gif",
   ];
 
+  // Neutralisation des fausses alertes anti-adblock et popups parasites du site
+  function neutralizeAnnoyingPopups() {
+    const closeBtn = document.querySelector("#closeNoticeBtn");
+    if (closeBtn) {
+      const modal = closeBtn.closest("div[style*='position: fixed'], div[style*='position:fixed'], div[style*='z-index']");
+      if (modal) modal.remove();
+      else closeBtn.remove();
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    }
+
+    document.querySelectorAll("div[style*='position: fixed'], div[style*='position:fixed']").forEach((el) => {
+      if (el.classList.contains("lgsp-lightbox-overlay") || el.id === "lgsp-steam-sync-notif") return;
+      const text = (el.textContent || "").toLowerCase();
+      if (
+        text.includes("preventing download links") ||
+        text.includes("allow pop-ups") ||
+        text.includes("disable any ad filtering") ||
+        text.includes("disable adblock") ||
+        text.includes("disable your ad blocker")
+      ) {
+        el.remove();
+        document.body.style.overflow = "";
+        document.documentElement.style.overflow = "";
+      }
+    });
+  }
+
+  neutralizeAnnoyingPopups();
+
   // Config par domaine : sélecteurs de carte/titre/images, repris du scraper
   // Rust du projet quand disponibles.
   const SITE_CONFIGS = {
@@ -50,13 +80,15 @@
   const config = SITE_CONFIGS[location.hostname];
   if (!config) return;
 
-  // SkidrowReloaded : activation sur les pages de liste uniquement
+  // SkidrowReloaded : activation sur les pages de liste et résultats de recherche
   if (config.layout === "sidebar-flex") {
     const path = location.pathname;
     const isListingPage =
       path === "/" ||
       /^\/page\/\d+\/?$/.test(path) ||
-      path.startsWith("/category/");
+      path.startsWith("/category/") ||
+      path.startsWith("/tag/") ||
+      location.search.includes("s=");
     document.documentElement.classList.toggle("lgsp-skidrow-listing", isListingPage);
     if (!isListingPage) return;
   }
@@ -182,6 +214,103 @@
     }
   }
 
+  const SEARCH_HISTORY_KEY = "lgsp_skidrow_search_history";
+  const LAST_SEARCH_KEY = "lgsp_skidrow_last_search";
+
+  function getSearchHistory() {
+    try {
+      const raw = localStorage.getItem(SEARCH_HISTORY_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveSearchQuery(query) {
+    const trimmed = (query || "").trim();
+    if (!trimmed) return;
+    try {
+      localStorage.setItem(LAST_SEARCH_KEY, trimmed);
+      const history = getSearchHistory().filter((item) => item.toLowerCase() !== trimmed.toLowerCase());
+      history.unshift(trimmed);
+      localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history.slice(0, 20)));
+    } catch {}
+  }
+
+  function adjustSkidrowElements() {
+    if (config.layout !== "sidebar-flex") return;
+
+    const nav = document.querySelector("#nav");
+    if (nav) {
+      let search = document.querySelector("#search-1");
+      if (!search) {
+        search = document.createElement("div");
+        search.id = "search-1";
+        search.className = "widget";
+        nav.insertAdjacentElement("afterend", search);
+      } else if (nav.nextElementSibling !== search) {
+        nav.insertAdjacentElement("afterend", search);
+      }
+
+      let form = search.querySelector("form");
+      if (!form) {
+        form = document.createElement("form");
+        form.method = "get";
+        form.id = "searchform";
+        form.action = "https://www.skidrowreloaded.com/";
+        search.appendChild(form);
+      }
+
+      if (!form.getAttribute("data-lgsp-styled")) {
+        form.setAttribute("data-lgsp-styled", "1");
+
+        // Récupération de la recherche en cours (depuis l'URL ?s=...), ou du champ, ou du dernier terme mémorisé
+        const urlParams = new URLSearchParams(location.search);
+        const urlQuery = urlParams.get("s");
+        const existingInput = form.querySelector("#searchbar");
+        const initialVal = urlQuery ?? (existingInput && existingInput.value ? existingInput.value : (localStorage.getItem(LAST_SEARCH_KEY) || ""));
+
+        if (urlQuery) {
+          saveSearchQuery(urlQuery);
+        }
+
+        const history = getSearchHistory();
+        const datalistOptions = history.map((term) => `<option value="${term.replace(/"/g, '&quot;')}"></option>`).join("");
+
+        form.innerHTML = `
+          <input type="text" name="s" id="searchbar" list="lgsp-search-history" value="${initialVal.replace(/"/g, '&quot;')}" placeholder="Rechercher un jeu..." autocomplete="on">
+          <datalist id="lgsp-search-history">
+            ${datalistOptions}
+          </datalist>
+          <button type="submit" id="lgsp-search-btn" aria-label="Rechercher">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="7"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <span>Rechercher</span>
+          </button>
+        `;
+
+        form.addEventListener("submit", () => {
+          const input = form.querySelector("#searchbar");
+          if (input && input.value) {
+            saveSearchQuery(input.value);
+          }
+        });
+      }
+    }
+
+    // Suppression des widgets et de la sidebar
+    const text33 = document.querySelector("#text-33");
+    if (text33) text33.remove();
+
+    const text3 = document.querySelector("#text-3");
+    if (text3) text3.remove();
+
+    const sidebar = document.querySelector("#sidebar");
+    if (sidebar) sidebar.remove();
+  }
+
   function applySidebarFlexLayout(widthValue) {
     if (config.pageWrapSelector) {
       document.querySelectorAll(config.pageWrapSelector).forEach((el) => {
@@ -193,33 +322,23 @@
       });
     }
 
+    adjustSkidrowElements();
+
     const wrap = document.querySelector(config.wrapSelector);
     const main = document.querySelector(config.mainSelector);
-    const sidebar = config.sidebarSelector ? document.querySelector(config.sidebarSelector) : null;
     if (!wrap || !main) return;
 
     wrap.style.setProperty("max-width", widthValue, "important");
     wrap.style.setProperty("width", "100%", "important");
     wrap.style.setProperty("margin-left", "auto", "important");
     wrap.style.setProperty("margin-right", "auto", "important");
-    wrap.style.setProperty("display", "flex", "important");
-    wrap.style.setProperty("align-items", "flex-start", "important");
-    wrap.style.setProperty("gap", "24px", "important");
+    wrap.style.setProperty("display", "block", "important");
     wrap.style.setProperty("box-sizing", "border-box", "important");
 
     main.style.setProperty("float", "none", "important");
-    main.style.setProperty("width", "auto", "important");
+    main.style.setProperty("width", "100%", "important");
     main.style.setProperty("max-width", "none", "important");
-    main.style.setProperty("flex", "1 1 0", "important");
-    main.style.setProperty("min-width", "0", "important");
     main.style.setProperty("box-sizing", "border-box", "important");
-
-    if (sidebar) {
-      sidebar.style.setProperty("float", "none", "important");
-      sidebar.style.setProperty("flex", "0 0 280px", "important");
-      sidebar.style.setProperty("width", "280px", "important");
-      sidebar.style.setProperty("box-sizing", "border-box", "important");
-    }
   }
 
   chrome.storage.local.get(defaultsWithPrefix(), (settings) =>
@@ -290,7 +409,7 @@
           videos.push({
             type: "youtube",
             id: videoId,
-            embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1`,
+            embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&enablejsapi=1`,
             thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
             title: "Bande-annonce YouTube",
           });
@@ -300,16 +419,17 @@
     return videos;
   }
 
-  // --- Steam : extraction d'URL et interrogation de l'API enrichie -----------
+  const STEAM_APP_RE = /https?:\/\/store\.steampowered\.com\/app\/(\d+)/i;
 
-  const STEAM_APP_RE = /https:\/\/store\.steampowered\.com\/app\/(\d+)/;
-
-  function extractSteamInfo(doc) {
-    const links = doc.querySelectorAll('a[href*="store.steampowered.com/app/"]');
-    for (const link of links) {
-      const href = link.getAttribute("href") || "";
-      const m = href.match(STEAM_APP_RE);
-      if (m) return { steamUrl: href, appId: m[1] };
+  function extractSteamInfo(doc, card) {
+    const roots = [doc, card].filter(Boolean);
+    for (const root of roots) {
+      const links = root.querySelectorAll('a[href*="store.steampowered.com/app/"]');
+      for (const link of links) {
+        const href = link.getAttribute("href") || "";
+        const m = href.match(STEAM_APP_RE);
+        if (m) return { steamUrl: href, appId: m[1] };
+      }
     }
     return null;
   }
@@ -336,12 +456,88 @@
   const SVG_CHECK = `<svg class="lgsp-svg-check" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 8.5 6.5 11.5 12.5 4.5"/></svg>`;
   const SVG_CROSS = `<svg class="lgsp-svg-cross" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg>`;
 
+  // Données utilisateur Steam (Wishlist et Bibliothèque)
+  let userSteamWishlist = new Set();
+  let userSteamOwned = new Set();
+
+  function updateSteamBadges(card, appId) {
+    if (!card || !appId) return;
+    const appIdStr = String(appId);
+
+    // Suppression des anciennes bannières
+    card.querySelectorAll(".lgsp-wishlist-banner, .lgsp-owned-banner").forEach((el) => el.remove());
+
+    const titleEl = card.querySelector(titleSel);
+    const titleParent = titleEl ? titleEl.closest("h2") : null;
+    const insertRef = titleParent || card.firstChild;
+
+    if (userSteamWishlist.has(appIdStr)) {
+      const banner = document.createElement("div");
+      banner.className = "lgsp-wishlist-banner";
+      banner.innerHTML = `<span class="lgsp-wishlist-badge">⭐ DANS VOTRE WISHLIST</span>`;
+      banner.title = "Ce jeu fait partie de votre liste de souhaits Steam";
+      card.insertBefore(banner, insertRef);
+    }
+    if (userSteamOwned.has(appIdStr)) {
+      const banner = document.createElement("div");
+      banner.className = "lgsp-owned-banner";
+      banner.innerHTML = `<span class="lgsp-owned-badge">📦 DÉJÀ DANS VOTRE BIBLIOTHÈQUE</span>`;
+      banner.title = "Vous possédez déjà ce jeu sur Steam";
+      card.insertBefore(banner, insertRef);
+    }
+  }
+
+  function updateAllSteamBadges() {
+    document.querySelectorAll(".lgsp-card, .post, article, " + (config.cardSelector || ".post")).forEach((card) => {
+      const appId = card.getAttribute("data-steam-appid");
+      if (appId) {
+        updateSteamBadges(card, appId);
+      }
+    });
+  }
+
+  function loadUserSteamData() {
+    chrome.storage.local.get(["steamWishlist", "steamOwned"], (res) => {
+      if (Array.isArray(res.steamWishlist)) {
+        userSteamWishlist = new Set(res.steamWishlist.map(String));
+      }
+      if (Array.isArray(res.steamOwned)) {
+        userSteamOwned = new Set(res.steamOwned.map(String));
+      }
+      updateAllSteamBadges();
+    });
+  }
+  loadUserSteamData();
+
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && (changes.steamWishlist || changes.steamOwned)) {
+      loadUserSteamData();
+    }
+  });
+
   // Construit le bandeau complet d'informations Steam
   function renderSteamInfo(card, steamUrl, steamData) {
-    if (card.querySelector(".lgsp-steam-info")) return;
+    let wrap = card.querySelector(".lgsp-steam-info");
+    const appIdMatch = (steamUrl || "").match(STEAM_APP_RE);
+    const currentAppId = steamData?.appId || (appIdMatch ? appIdMatch[1] : null);
 
-    const wrap = document.createElement("div");
+    if (currentAppId) {
+      card.setAttribute("data-steam-appid", currentAppId);
+      updateSteamBadges(card, currentAppId);
+    }
+
+    if (wrap) {
+      if (currentAppId) {
+        wrap.setAttribute("data-steam-appid", currentAppId);
+      }
+      return;
+    }
+
+    wrap = document.createElement("div");
     wrap.className = "lgsp-steam-info";
+    if (currentAppId) {
+      wrap.setAttribute("data-steam-appid", currentAppId);
+    }
 
     // 1. Bouton Steam
     const btn = document.createElement("a");
@@ -360,8 +556,9 @@
         const revBadge = document.createElement("span");
         revBadge.className = `lgsp-steam-badge lgsp-rev-${rev.scoreClass}`;
         const icon = rev.scoreClass === "negative" ? "👎" : "👍";
-        revBadge.innerHTML = `${icon} ${rev.desc} (${rev.percent}%)`;
-        revBadge.title = `${rev.totalPositive.toLocaleString()} avis positifs sur ${rev.total.toLocaleString()} (${rev.percent}%)`;
+        const formattedTotal = typeof rev.total === "number" ? rev.total.toLocaleString() : rev.total;
+        revBadge.innerHTML = `${icon} ${rev.desc} (${rev.percent}% · ${formattedTotal} avis)`;
+        revBadge.title = `${rev.totalPositive.toLocaleString()} avis positifs sur ${formattedTotal} (${rev.percent}%)`;
         wrap.appendChild(revBadge);
       }
 
@@ -382,26 +579,7 @@
         if (priceBadge.innerHTML) wrap.appendChild(priceBadge);
       }
 
-      // 4. Modes de jeu (Solo, Multijoueur, Coop, MMO)
-      if (Array.isArray(steamData.modes) && steamData.modes.length > 0) {
-        const modeIcons = {
-          Solo: "🎮",
-          Multijoueur: "👥",
-          Coop: "🤝",
-          MMO: "🌐",
-        };
-        steamData.modes.forEach((mode) => {
-          const modeBadge = document.createElement("span");
-          modeBadge.className = "lgsp-steam-badge lgsp-mode-badge";
-          modeBadge.textContent = `${modeIcons[mode] || "🕹️"} ${mode}`;
-          if (steamData.modeDetails) {
-            modeBadge.title = steamData.modeDetails;
-          }
-          wrap.appendChild(modeBadge);
-        });
-      }
-
-      // 5. Badge Langue Français détaillé (3 éléments : Interface, Audio, Sous-titres)
+      // 4. Badge Langue Français détaillé (3 éléments : Interface, Audio, Sous-titres)
       const french = steamData.french;
       if (french) {
         const badge = document.createElement("span");
@@ -424,6 +602,28 @@
           badge.innerHTML = `❓ FR inconnu`;
         }
         wrap.appendChild(badge);
+      }
+
+      // 5. Modes de jeu (Solo, Multijoueur, Coop, MMO) - Saut à la ligne
+      if (Array.isArray(steamData.modes) && steamData.modes.length > 0) {
+        const modeIcons = {
+          Solo: "🎮",
+          Multijoueur: "👥",
+          Coop: "🤝",
+          MMO: "🌐",
+        };
+        const modesRow = document.createElement("div");
+        modesRow.className = "lgsp-steam-modes-row";
+        steamData.modes.forEach((mode) => {
+          const modeBadge = document.createElement("span");
+          modeBadge.className = "lgsp-steam-badge lgsp-mode-badge";
+          modeBadge.textContent = `${modeIcons[mode] || "🕹️"} ${mode}`;
+          if (steamData.modeDetails) {
+            modeBadge.title = steamData.modeDetails;
+          }
+          modesRow.appendChild(modeBadge);
+        });
+        wrap.appendChild(modesRow);
       }
 
       // 6. Description courte du jeu (game_description_snippet)
@@ -471,6 +671,43 @@
     }
   }
 
+  const SAVED_VOLUME_STORAGE_KEY = "lgsp_saved_media_volume";
+  let currentMediaVolume = 0.25; // 25% par défaut lors de la toute première utilisation
+
+  try {
+    const stored = localStorage.getItem(SAVED_VOLUME_STORAGE_KEY);
+    if (stored !== null) {
+      const parsed = parseFloat(stored);
+      if (!isNaN(parsed) && parsed >= 0 && parsed <= 1) {
+        currentMediaVolume = parsed;
+      }
+    }
+  } catch {}
+
+  function saveNewVolume(volume) {
+    if (typeof volume !== "number" || isNaN(volume)) return;
+    const clamped = Math.max(0, Math.min(1, volume));
+    currentMediaVolume = clamped;
+    try {
+      localStorage.setItem(SAVED_VOLUME_STORAGE_KEY, `${clamped}`);
+    } catch {}
+  }
+
+  // Écoute des mises à jour de volume depuis l'iframe YouTube
+  window.addEventListener("message", (e) => {
+    try {
+      let data = e.data;
+      if (typeof data === "string") {
+        try { data = JSON.parse(data); } catch {}
+      }
+      if (data && typeof data === "object") {
+        if (data.event === "infoDelivery" && data.info && typeof data.info.volume === "number") {
+          saveNewVolume(data.info.volume / 100);
+        }
+      }
+    } catch {}
+  });
+
   function openLightbox(item) {
     const box = document.createElement("div");
     box.className = "lgsp-lightbox";
@@ -491,17 +728,58 @@
       container.appendChild(img);
     } else if (item.type === "youtube") {
       const iframe = document.createElement("iframe");
-      iframe.src = item.embedUrl;
+      const url = item.embedUrl.includes("enablejsapi=1")
+        ? item.embedUrl
+        : `${item.embedUrl}${item.embedUrl.includes("?") ? "&" : "?"}enablejsapi=1`;
+      iframe.src = url;
       iframe.setAttribute("allow", "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture");
       iframe.setAttribute("allowfullscreen", "true");
       iframe.className = "lgsp-lightbox-video";
+
+      const applyYoutubeVolume = () => {
+        try {
+          const volPercent = Math.round(currentMediaVolume * 100);
+          iframe.contentWindow.postMessage(
+            JSON.stringify({ event: "command", func: "setVolume", args: [volPercent] }),
+            "*"
+          );
+          iframe.contentWindow.postMessage(
+            JSON.stringify({ event: "listening" }),
+            "*"
+          );
+        } catch {}
+      };
+
+      iframe.addEventListener("load", () => {
+        applyYoutubeVolume();
+        setTimeout(applyYoutubeVolume, 300);
+        setTimeout(applyYoutubeVolume, 800);
+      });
+
       container.appendChild(iframe);
     } else if (item.type === "steam_movie") {
       const video = document.createElement("video");
       video.controls = true;
       video.autoplay = true;
       video.playsInline = true;
+      video.volume = currentMediaVolume;
       video.className = "lgsp-lightbox-video";
+
+      let isReadyForUserChanges = false;
+
+      video.addEventListener("loadedmetadata", () => {
+        video.volume = currentMediaVolume;
+        setTimeout(() => {
+          isReadyForUserChanges = true;
+        }, 150);
+      });
+
+      video.addEventListener("volumechange", () => {
+        if (isReadyForUserChanges && !video.muted) {
+          saveNewVolume(video.volume);
+        }
+      });
+
       attachVideoSource(video, item);
       container.appendChild(video);
     }
@@ -510,8 +788,13 @@
 
     function close() {
       const v = container.querySelector("video");
-      if (v && v._hls) {
-        v._hls.destroy();
+      if (v) {
+        if (!v.muted) {
+          saveNewVolume(v.volume);
+        }
+        if (v._hls) {
+          v._hls.destroy();
+        }
       }
       box.remove();
       document.removeEventListener("keydown", onKeyDown);
@@ -526,6 +809,178 @@
     });
     document.addEventListener("keydown", onKeyDown);
     document.body.appendChild(box);
+  }
+
+  function getVolumeIcon(vol) {
+    if (vol <= 0) {
+      return `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>`;
+    }
+    if (vol < 0.5) {
+      return `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>`;
+    }
+    return `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>`;
+  }
+
+  function createHoverVolumeControl(onVolumeChange) {
+    const wrap = document.createElement("div");
+    wrap.className = "lgsp-hover-vol-control";
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "lgsp-hover-vol-btn";
+    btn.innerHTML = getVolumeIcon(currentMediaVolume);
+    btn.setAttribute("aria-label", "Activer / Couper le son");
+
+    const slider = document.createElement("input");
+    slider.type = "range";
+    slider.min = "0";
+    slider.max = "100";
+    slider.value = `${Math.round(currentMediaVolume * 100)}`;
+    slider.className = "lgsp-hover-vol-slider";
+
+    let lastNonZeroVol = currentMediaVolume > 0 ? currentMediaVolume : 0.25;
+
+    const updateVol = (newVal) => {
+      slider.value = `${Math.round(newVal * 100)}`;
+      btn.innerHTML = getVolumeIcon(newVal);
+      saveNewVolume(newVal);
+      if (onVolumeChange) onVolumeChange(newVal);
+    };
+
+    slider.addEventListener("input", (e) => {
+      e.stopPropagation();
+      const val = parseFloat(slider.value) / 100;
+      if (val > 0) lastNonZeroVol = val;
+      btn.innerHTML = getVolumeIcon(val);
+      saveNewVolume(val);
+      if (onVolumeChange) onVolumeChange(val);
+    });
+
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (currentMediaVolume > 0) {
+        lastNonZeroVol = currentMediaVolume;
+        updateVol(0);
+      } else {
+        updateVol(lastNonZeroVol);
+      }
+    });
+
+    wrap.addEventListener("click", (e) => e.stopPropagation());
+    wrap.addEventListener("mousedown", (e) => e.stopPropagation());
+
+    wrap.appendChild(btn);
+    wrap.appendChild(slider);
+    return wrap;
+  }
+
+  function createHoverProgressBar(target, type) {
+    const wrap = document.createElement("div");
+    wrap.className = "lgsp-hover-progress-wrap";
+
+    const track = document.createElement("div");
+    track.className = "lgsp-hover-progress-track";
+
+    const fill = document.createElement("div");
+    fill.className = "lgsp-hover-progress-fill";
+
+    const handle = document.createElement("div");
+    handle.className = "lgsp-hover-progress-handle";
+
+    track.appendChild(fill);
+    track.appendChild(handle);
+    wrap.appendChild(track);
+
+    let isScrubbing = false;
+    let ytDuration = 0;
+
+    const setPosition = (pos) => {
+      const pct = Math.max(0, Math.min(100, pos * 100));
+      fill.style.width = `${pct}%`;
+      handle.style.left = `${pct}%`;
+    };
+
+    const seekFromEvent = (e) => {
+      const rect = track.getBoundingClientRect();
+      if (rect.width <= 0) return;
+      const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      setPosition(pos);
+
+      if (type === "steam_movie" && target && target.duration) {
+        target.currentTime = pos * target.duration;
+      } else if (type === "youtube" && target) {
+        const seekSeconds = pos * (ytDuration || 60);
+        try {
+          target.contentWindow.postMessage(
+            JSON.stringify({ event: "command", func: "seekTo", args: [seekSeconds, true] }),
+            "*"
+          );
+        } catch {}
+      }
+    };
+
+    const onPointerDown = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      isScrubbing = true;
+      wrap.classList.add("lgsp-scrubbing");
+      seekFromEvent(e);
+
+      const onPointerMove = (moveEvent) => {
+        if (!isScrubbing) return;
+        moveEvent.preventDefault();
+        moveEvent.stopPropagation();
+        seekFromEvent(moveEvent);
+      };
+
+      const onPointerUp = (upEvent) => {
+        if (!isScrubbing) return;
+        isScrubbing = false;
+        wrap.classList.remove("lgsp-scrubbing");
+        seekFromEvent(upEvent);
+        window.removeEventListener("pointermove", onPointerMove);
+        window.removeEventListener("pointerup", onPointerUp);
+        window.removeEventListener("pointercancel", onPointerUp);
+      };
+
+      window.addEventListener("pointermove", onPointerMove);
+      window.addEventListener("pointerup", onPointerUp);
+      window.addEventListener("pointercancel", onPointerUp);
+    };
+
+    wrap.addEventListener("pointerdown", onPointerDown);
+    wrap.addEventListener("click", (e) => e.stopPropagation());
+    wrap.addEventListener("mousedown", (e) => e.stopPropagation());
+
+    if (type === "steam_movie" && target) {
+      target.addEventListener("timeupdate", () => {
+        if (!isScrubbing && target.duration > 0) {
+          setPosition(target.currentTime / target.duration);
+        }
+      });
+    } else if (type === "youtube") {
+      const onYtMessage = (e) => {
+        try {
+          let data = e.data;
+          if (typeof data === "string") {
+            try { data = JSON.parse(data); } catch {}
+          }
+          if (data && data.event === "infoDelivery" && data.info) {
+            if (typeof data.info.duration === "number" && data.info.duration > 0) {
+              ytDuration = data.info.duration;
+            }
+            if (typeof data.info.currentTime === "number" && ytDuration > 0 && !isScrubbing) {
+              setPosition(data.info.currentTime / ytDuration);
+            }
+          }
+        } catch {}
+      };
+      window.addEventListener("message", onYtMessage);
+      wrap._cleanYt = () => window.removeEventListener("message", onYtMessage);
+    }
+
+    return wrap;
   }
 
   // --- Rendu de la galerie multimédia (Jaquette + Vidéos + Screenshots) -------
@@ -590,6 +1045,7 @@
       if (item.type === "youtube" || item.type === "steam_movie") {
         let hoverTimer = null;
         let isPlayingPreview = false;
+        let activeProgressWrap = null;
 
         const startPreview = () => {
           if (isPlayingPreview) return;
@@ -599,20 +1055,79 @@
 
           if (item.type === "youtube") {
             const iframe = document.createElement("iframe");
-            iframe.src = `https://www.youtube-nocookie.com/embed/${item.id}?autoplay=1&mute=1&controls=0&modestbranding=1&loop=1`;
+            iframe.src = `https://www.youtube-nocookie.com/embed/${item.id}?autoplay=1&controls=0&modestbranding=1&loop=1&enablejsapi=1`;
             iframe.setAttribute("allow", "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture");
             iframe.setAttribute("allowfullscreen", "true");
             iframe.className = "lgsp-gallery-embed";
+
+            const applyHoverVolume = () => {
+              try {
+                const volPercent = Math.round(currentMediaVolume * 100);
+                iframe.contentWindow.postMessage(
+                  JSON.stringify({ event: "command", func: "unMute" }),
+                  "*"
+                );
+                iframe.contentWindow.postMessage(
+                  JSON.stringify({ event: "command", func: "setVolume", args: [volPercent] }),
+                  "*"
+                );
+                iframe.contentWindow.postMessage(
+                  JSON.stringify({ event: "listening" }),
+                  "*"
+                );
+              } catch {}
+            };
+
+            iframe.addEventListener("load", () => {
+              applyHoverVolume();
+              setTimeout(applyHoverVolume, 300);
+            });
+
+            const volControl = createHoverVolumeControl((vol) => {
+              try {
+                const volPercent = Math.round(vol * 100);
+                iframe.contentWindow.postMessage(
+                  JSON.stringify({ event: "command", func: vol === 0 ? "mute" : "unMute" }),
+                  "*"
+                );
+                iframe.contentWindow.postMessage(
+                  JSON.stringify({ event: "command", func: "setVolume", args: [volPercent] }),
+                  "*"
+                );
+              } catch {}
+            });
+
+            const progressBar = createHoverProgressBar(iframe, "youtube");
+            activeProgressWrap = progressBar;
+
             itemWrap.appendChild(iframe);
+            itemWrap.appendChild(volControl);
+            itemWrap.appendChild(progressBar);
           } else if (item.type === "steam_movie") {
             const video = document.createElement("video");
             video.controls = false;
             video.autoplay = true;
-            video.muted = true;
+            video.muted = false;
+            video.volume = currentMediaVolume;
             video.playsInline = true;
             video.className = "lgsp-gallery-embed";
+
+            video.addEventListener("play", () => {
+              video.volume = currentMediaVolume;
+            });
+
+            const volControl = createHoverVolumeControl((vol) => {
+              video.volume = vol;
+              video.muted = (vol === 0);
+            });
+
+            const progressBar = createHoverProgressBar(video, "steam_movie");
+            activeProgressWrap = progressBar;
+
             attachVideoSource(video, item);
             itemWrap.appendChild(video);
+            itemWrap.appendChild(volControl);
+            itemWrap.appendChild(progressBar);
           }
 
           // Overlay transparent pour capter le clic utilisateur et ouvrir la Lightbox
@@ -625,6 +1140,10 @@
           if (hoverTimer) {
             clearTimeout(hoverTimer);
             hoverTimer = null;
+          }
+          if (activeProgressWrap && activeProgressWrap._cleanYt) {
+            activeProgressWrap._cleanYt();
+            activeProgressWrap = null;
           }
           if (isPlayingPreview) {
             isPlayingPreview = false;
@@ -649,18 +1168,41 @@
           stopPreview();
         });
 
-        // Clic sur la vignette ouvre le lecteur en grand dans la Lightbox
+        // Clic gauche sur la vignette ouvre le lecteur en grand dans la Lightbox
         itemWrap.addEventListener("click", (e) => {
+          if (e.button === 1 || e.which === 2) return;
           e.preventDefault();
           e.stopPropagation();
           stopPreview();
           openLightbox(item);
         });
+
+        // Clic molette (clic milieu) ouvre la page du jeu dans un nouvel onglet
+        itemWrap.addEventListener("auxclick", (e) => {
+          if (e.button === 1 || e.which === 2) {
+            e.preventDefault();
+            e.stopPropagation();
+            const cardLink = findCardLink(card);
+            if (cardLink) window.open(cardLink, "_blank", "noopener,noreferrer");
+          }
+        });
       } else {
+        // Clic gauche sur la vignette ouvre l'image en grand dans la Lightbox
         itemWrap.addEventListener("click", (e) => {
+          if (e.button === 1 || e.which === 2) return;
           e.preventDefault();
           e.stopPropagation();
           openLightbox(item);
+        });
+
+        // Clic molette (clic milieu) ouvre la page du jeu dans un nouvel onglet
+        itemWrap.addEventListener("auxclick", (e) => {
+          if (e.button === 1 || e.which === 2) {
+            e.preventDefault();
+            e.stopPropagation();
+            const cardLink = findCardLink(card);
+            if (cardLink) window.open(cardLink, "_blank", "noopener,noreferrer");
+          }
         });
       }
 
@@ -816,7 +1358,7 @@
         const coverSrc = coverData ? coverData.src : null;
         pageScreenshots = extractScreenshots(doc, coverSrc);
         pageVideos = extractYouTubeVideos(doc);
-        steamInfo = extractSteamInfo(doc);
+        steamInfo = extractSteamInfo(doc, card);
 
         detailCache.set(link, { pageScreenshots, pageVideos, steamInfo });
       }
@@ -939,6 +1481,8 @@
   }
 
   function scanForCards() {
+    neutralizeAnnoyingPopups();
+    adjustSkidrowElements();
     document.querySelectorAll(`${cardSel}`).forEach((card) => {
       if (!card.hasAttribute(PROCESSED_ATTR)) {
         enforceSingleColumnLayout(card);
