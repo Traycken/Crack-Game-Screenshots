@@ -17,7 +17,7 @@ Suivez ces étapes pour installer l'extension en mode développeur sur Google Ch
 
 ### 1. Télécharger et extraire l'extension
 1. Cliquez sur ce lien pour **[télécharger directement l'archive ZIP](https://github.com/Traycken/Crack-Game-Screenshots/archive/refs/heads/main.zip)** (ou rendez-vous sur le [dépôt GitHub](https://github.com/Traycken/Crack-Game-Screenshots)).
-2. Décompressez l'archive ZIP dans un dossier permanent sur votre ordinateur (par exemple dans vos documents ou votre dossier de scripts).  
+2. Décompressez l'archive ZIP dans un dossier permanent sur votre ordinateur (par exemple dans vos documents ou votre dossier d'extension personnaliser).  
    > ⚠️ **Important :** Ne supprimez pas ce dossier après l'installation, Chrome en a besoin pour faire fonctionner l'extension.
 
 ---
@@ -54,8 +54,6 @@ Pour mettre à jour l'extension manuellement lorsqu'une nouvelle version est dis
 - 📸 **Captures d'écran & Vidéos** : Aperçu direct des galeries d'images et bandes-annonces/trailers (YouTube/Steam/HLS) sous chaque carte de jeu.
 - ♾️ **Défilement infini (*Infinite Scroll*)** : Chargement automatique des jeux suivants en faisant défiler la page, avec séparateurs visuels élégants (*Page 2*, *Page 3*, etc.).
 - 🧭 **Navigation dynamique (SPA)** : Changement de page instantané et recherche en tâche de fond sans rechargement de la fenêtre du navigateur.
-- 🔢 **Saut direct de page (Input INT)** : Accès direct à n'importe quelle page en tapant manuellement son numéro dans la barre de pagination.
-- 🔍 **Barre de recherche optimisée** : Recherche fluide avec historique des termes et bouton d'effacement rapide (croix ✕).
 - ⚙️ **Configurations requises & Comparateur PC** : Vérification immédiate de la compatibilité de votre matériel avec les spécifications minimales et recommandées.
 - 🎮 **Synchronisation Steam** : Badges dynamiques indiquant si le jeu est possédé ou présent dans votre liste de souhaits Steam, avis des joueurs, prix et modes de jeu.
 - 🎛️ **Personnalisation complète** : Réglage du nombre de colonnes, de lignes, du nombre maximal de captures et de la largeur d'affichage via le popup de l'extension.
