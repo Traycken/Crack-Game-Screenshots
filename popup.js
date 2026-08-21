@@ -222,12 +222,170 @@ function initSteamSync() {
   }
 }
 
+const GITHUB_REPO_URL = "https://github.com/Traycken/Crack-Game-Screenshots";
+const GITHUB_RAW_MANIFEST_URL = "https://raw.githubusercontent.com/Traycken/Crack-Game-Screenshots/main/manifest.json";
+
+function compareVersions(v1, v2) {
+  const p1 = (v1 || "").replace(/^v/, "").split(".").map((n) => parseInt(n, 10) || 0);
+  const p2 = (v2 || "").replace(/^v/, "").split(".").map((n) => parseInt(n, 10) || 0);
+  const maxLen = Math.max(p1.length, p2.length);
+  for (let i = 0; i < maxLen; i++) {
+    const num1 = p1[i] || 0;
+    const num2 = p2[i] || 0;
+    if (num1 > num2) return 1;
+    if (num1 < num2) return -1;
+  }
+  return 0;
+}
+
+function initVersionChecker() {
+  const manifest = chrome.runtime.getManifest();
+  const currentVersion = manifest.version_name || manifest.version || "1.0.0";
+
+  const versionEl = document.getElementById("extensionVersion");
+  const checkBtn = document.getElementById("checkUpdateBtn");
+  const statusEl = document.getElementById("updateCheckStatus");
+  const bannerEl = document.getElementById("updateBanner");
+  const bannerDesc = document.getElementById("updateBannerDesc");
+  const badgeEl = document.getElementById("updateVersionBadge");
+  const downloadBtn = document.getElementById("updateDownloadBtn");
+
+  if (versionEl) {
+    versionEl.textContent = `v${currentVersion}`;
+  }
+
+  // Affichage immédiat si déjà détecté en arrière-plan
+  chrome.storage.local.get(["updateAvailable", "latestVersion"], (data) => {
+    if (data.updateAvailable && data.latestVersion) {
+      showUpdateBanner(data.latestVersion);
+    }
+  });
+
+  function showUpdateBanner(remoteVersion) {
+    if (badgeEl) badgeEl.textContent = `v${remoteVersion}`;
+    if (bannerDesc) {
+      bannerDesc.textContent = `Une nouvelle version (v${remoteVersion}) est disponible ! Vous utilisez actuellement la v${currentVersion}.`;
+    }
+    if (bannerEl) bannerEl.hidden = false;
+  }
+
+  function hideUpdateBanner() {
+    if (bannerEl) bannerEl.hidden = true;
+  }
+
+  let isChecking = false;
+
+  function check(isManual = false) {
+    if (isChecking) return;
+    isChecking = true;
+
+    if (isManual && statusEl) {
+      statusEl.className = "update-check-status loading";
+      statusEl.textContent = "Vérification...";
+    }
+
+    chrome.runtime.sendMessage({ type: "CHECK_EXTENSION_UPDATES" }, (res) => {
+      isChecking = false;
+
+      if (chrome.runtime.lastError || !res || !res.success) {
+        if (isManual && statusEl) {
+          statusEl.className = "update-check-status error";
+          statusEl.textContent = "❌ Échec";
+          setTimeout(() => {
+            if (statusEl.textContent === "❌ Échec") statusEl.textContent = "";
+          }, 3500);
+        }
+        return;
+      }
+
+      if (res.hasUpdate && res.latestVersion) {
+        showUpdateBanner(res.latestVersion);
+        if (isManual && statusEl) {
+          statusEl.className = "update-check-status";
+          statusEl.textContent = `🎉 v${res.latestVersion} dispo !`;
+        }
+      } else {
+        hideUpdateBanner();
+        if (isManual && statusEl) {
+          statusEl.className = "update-check-status up-to-date";
+          statusEl.textContent = "✅ À jour";
+          setTimeout(() => {
+            if (statusEl.textContent === "✅ À jour") statusEl.textContent = "";
+          }, 3500);
+        }
+      }
+    });
+  }
+
+  if (downloadBtn) {
+    downloadBtn.addEventListener("click", () => {
+      chrome.tabs.create({ url: `${GITHUB_REPO_URL}/releases/latest` });
+    });
+  }
+
+  if (checkBtn) {
+    checkBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      check(true);
+    });
+  }
+
+  // Vérification automatique en arrière-plan à l'ouverture du popup
+  check(false);
+}
+
+function initNavigation() {
+  const settingsBtn = document.getElementById("settingsToggleBtn");
+  const viewMain = document.getElementById("viewMain");
+  const viewSettings = document.getElementById("viewSettings");
+  const headerTitle = document.getElementById("headerTitle");
+  const creatorLink = document.getElementById("creatorLink");
+  const githubRepoLink = document.getElementById("githubRepoLink");
+
+  let inSettings = false;
+
+  if (settingsBtn && viewMain && viewSettings && headerTitle) {
+    settingsBtn.addEventListener("click", () => {
+      inSettings = !inSettings;
+      if (inSettings) {
+        viewMain.hidden = true;
+        viewSettings.hidden = false;
+        headerTitle.textContent = "Paramètres";
+        settingsBtn.classList.add("active");
+        settingsBtn.title = "Retour aux réglages";
+      } else {
+        viewMain.hidden = false;
+        viewSettings.hidden = true;
+        headerTitle.textContent = "Tailles des éléments";
+        settingsBtn.classList.remove("active");
+        settingsBtn.title = "Paramètres";
+      }
+    });
+  }
+
+  // Gestion des liens externes
+  if (creatorLink) {
+    creatorLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      chrome.tabs.create({ url: "https://github.com/Traycken" });
+    });
+  }
+  if (githubRepoLink) {
+    githubRepoLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      chrome.tabs.create({ url: GITHUB_REPO_URL });
+    });
+  }
+}
+
 function init() {
   // Les 3 boutons doivent être utilisables immédiatement, indépendamment du
   // site actuellement ouvert (voire même si l'onglet actif n'est pas l'un
   // des 3 sites gérés) ; pas besoin d'attendre la résolution de l'onglet.
+  initNavigation();
   renderSiteLinks(null);
   initSteamSync();
+  initVersionChecker();
 
   if (!chrome.tabs || !chrome.tabs.query) {
     showUnsupported();

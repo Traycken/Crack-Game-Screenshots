@@ -1,15 +1,17 @@
 {
   "manifest_version": 3,
   "name": "Game Sites - Aperçu Screenshots",
-  "version": "1.5.0",
-  "description": "Affiche les captures d'écran d'un jeu directement sous sa carte sur SkidrowReloaded, IGG-Games et PCGamesTorrents.",
-  "permissions": ["storage"],
+  "version": "2026.8.21.2050",
+  "description": "Affiche les captures d'écran, configuration requise, comparateur PC, poids et liens de téléchargement d'un jeu directement sous sa carte sur SkidrowReloaded, IGG-Games et PCGamesTorrents.",
+  "permissions": ["storage", "alarms"],
   "host_permissions": [
     "https://www.skidrowreloaded.com/*",
     "https://igg-games.com/*",
     "https://pcgamestorrents.com/*",
     "https://store.steampowered.com/*",
-    "https://steamcommunity.com/*"
+    "https://steamcommunity.com/*",
+    "https://raw.githubusercontent.com/*",
+    "https://github.com/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -39,7 +41,7 @@
       ],
       "js": ["hls.min.js", "content.js"],
       "css": ["style.css"],
-      "run_at": "document_idle"
+      "run_at": "document_start"
     },
     {
       "matches": [

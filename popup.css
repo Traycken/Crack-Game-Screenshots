@@ -7,10 +7,57 @@ body {
     color: #e0e0e0;
 }
 
+/* En-tête avec bouton paramètres */
+.popup-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
 h1 {
     font-size: 14px;
-    margin: 0 0 4px;
+    margin: 0;
     color: #00d9ff;
+}
+
+.icon-btn {
+    width: auto;
+    margin: 0;
+    padding: 4px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: #8a8aa0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s ease, background 0.15s ease, transform 0.2s ease;
+}
+
+.icon-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #00d9ff;
+}
+
+.icon-btn.active {
+    background: rgba(0, 217, 255, 0.15);
+    color: #00d9ff;
+    transform: rotate(45deg);
+}
+
+.gear-icon {
+    display: block;
+}
+
+/* Conteneurs de vues */
+.popup-view {
+    display: block;
+}
+
+.popup-view[hidden] {
+    display: none;
 }
 
 .site-label {
@@ -117,12 +164,11 @@ button:hover {
 
 /* Section Profil Steam */
 .steam-section {
-    margin-top: 18px;
-    padding-top: 14px;
-    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    margin-top: 6px;
+    margin-bottom: 14px;
 }
 
-.steam-section h2 {
+.steam-section h2, .about-section h2 {
     font-size: 13px;
     margin: 0 0 4px;
     color: #cf9f4f;
@@ -229,4 +275,147 @@ button:hover {
     background: #2a475e;
     border-color: #38bdf8;
     color: #fff;
+}
+
+/* Section À propos & Liens */
+.about-section {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.about-card {
+    background: #23233f;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-top: 6px;
+}
+
+.about-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 0;
+    font-size: 11px;
+}
+
+.about-item:not(:last-child) {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.about-label {
+    color: #8a8aa0;
+}
+
+.about-link {
+    color: #00d9ff;
+    text-decoration: none;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+}
+
+.about-link:hover {
+    text-decoration: underline;
+    opacity: 0.85;
+}
+
+/* Bannière de mise à jour */
+.update-banner {
+    background: linear-gradient(135deg, rgba(234, 179, 8, 0.15), rgba(249, 115, 22, 0.15));
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.update-banner-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fbbf24;
+}
+
+.update-desc {
+    margin: 4px 0 8px;
+    font-size: 11px;
+    color: #e5e7eb;
+    line-height: 1.35;
+}
+
+.update-download-btn {
+    width: 100%;
+    margin: 0;
+    padding: 6px 10px;
+    background: #f59e0b;
+    color: #1a1a2e;
+    font-weight: 700;
+    font-size: 11px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.update-download-btn:hover {
+    background: #fbbf24;
+}
+
+.update-download-btn:active {
+    transform: scale(0.98);
+}
+
+/* Footer avec numéro de version */
+.popup-footer {
+    margin-top: 16px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 10px;
+    color: #6b7280;
+}
+
+.footer-dot {
+    opacity: 0.5;
+}
+
+.check-update-link {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    width: auto;
+    color: #00d9ff;
+    font-size: 10px;
+    text-decoration: underline;
+    cursor: pointer;
+    opacity: 0.85;
+}
+
+.check-update-link:hover {
+    background: none;
+    opacity: 1;
+}
+
+.update-check-status {
+    font-size: 10px;
+}
+
+.update-check-status.up-to-date {
+    color: #4ade80;
+}
+
+.update-check-status.error {
+    color: #f87171;
+}
+
+.update-check-status.loading {
+    color: #fcd34d;
 }

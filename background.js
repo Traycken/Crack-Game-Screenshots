@@ -2,6 +2,7 @@
 // et récupérer les détails complets du jeu (Langues, Notes, Prix, Modes, Screenshots, Trailers).
 
 const steamGameCache = new Map();
+const steamSearchCache = new Map();
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === "STEAM_GAME_INFO" || msg.type === "STEAM_LANG_CHECK") {
@@ -29,6 +30,16 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true; // Réponse asynchrone
   }
 
+  if (msg.type === "SEARCH_STEAM_GAME") {
+    searchSteamGame(msg.title)
+      .then((res) => sendResponse(res))
+      .catch((err) => {
+        console.warn("[Background] Steam Search Error:", err);
+        sendResponse(null);
+      });
+    return true;
+  }
+
   if (msg.type === "SYNC_STEAM_DATA") {
     syncSteamUserData(msg.input)
       .then((res) => sendResponse(res))
@@ -38,7 +49,96 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       });
     return true;
   }
+
+  if (msg.type === "CHECK_EXTENSION_UPDATES") {
+    checkExtensionUpdates()
+      .then((res) => sendResponse(res))
+      .catch((err) => {
+        console.warn("[Background] Check updates error:", err);
+        sendResponse({ success: false, error: err.message });
+      });
+    return true;
+  }
 });
+
+function cleanGameTitle(rawTitle) {
+  if (!rawTitle) return "";
+  let title = rawTitle;
+
+  title = title.replace(/&amp;/g, "&").replace(/&#\d+;/g, "").replace(/&[a-z]+;/g, "");
+
+  title = title
+    .replace(/\b(?:SKIDROW|CODEX|PLAZA|CPY|HOODLUM|RELOADED|EMPRESS|RUNE|TENOKE|DOGE|FLT|RAZOR1911|FitGirl|DODI|ElAmigos|GOG|P2P|UNLEASHED|DARKSiDERS|TiNYiSO|TiNYISO|PROPHET|DEVIANCE|FAIRLIGHT|HI2U|ALiAS|CHRONOS)\b/gi, "")
+    .replace(/\b(?:v\d+(?:\.\d+)*[a-z]?|Build\s*\d+|Update\s*\d+|v[0-9._]+)\b/gi, "")
+    .replace(/\b(?:MULTi\d+|ENG?|FRENCH|GERMAN|SPANiSH|RUSSIAN|JAPANESE|PORTUGUESE|ITALIAN)\b/gi, "")
+    .replace(/\b(?:Incl\s*DLC|Incl\s*All\s*DLCs?|All\s*DLCs?|Repack|Early\s*Access|Deluxe\s*Edition|Ultimate\s*Edition|Complete\s*Edition|Standard\s*Edition|Definitive\s*Edition|Special\s*Edition|Enhanced\s*Edition|Anniversary\s*Edition|Collector(?:'s)?\s*Edition|GOTY|Game\s*of\s*the\s*Year(?:\s*Edition)?|Edition)\b/gi, "")
+    .replace(/[\[\(][^\]\)]*[\]\)]/g, "")
+    .replace(/[-_–—:]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return title;
+}
+
+async function searchSteamGame(rawTitle) {
+  const cleaned = cleanGameTitle(rawTitle);
+  if (!cleaned) return null;
+
+  if (steamSearchCache.has(cleaned)) {
+    return steamSearchCache.get(cleaned);
+  }
+
+  const candidates = [cleaned];
+  const words = cleaned.split(" ").filter(Boolean);
+  if (words.length > 3) {
+    candidates.push(words.slice(0, 3).join(" "));
+  }
+
+  for (const query of candidates) {
+    if (!query || query.length < 2) continue;
+
+    // 1. Store Search API
+    const url1 = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(query)}&l=french&cc=fr`;
+    try {
+      const res = await fetch(url1, {
+        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.total > 0 && Array.isArray(data.items) && data.items.length > 0) {
+          const result = {
+            appId: String(data.items[0].id),
+            name: data.items[0].name,
+            matchedQuery: query,
+          };
+          steamSearchCache.set(cleaned, result);
+          return result;
+        }
+      }
+    } catch (e) {}
+
+    // 2. Fallback Community SearchApps
+    const url2 = `https://steamcommunity.com/actions/SearchApps/${encodeURIComponent(query)}`;
+    try {
+      const res = await fetch(url2);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0 && data[0].appid) {
+          const result = {
+            appId: String(data[0].appid),
+            name: data[0].name,
+            matchedQuery: query,
+          };
+          steamSearchCache.set(cleaned, result);
+          return result;
+        }
+      }
+    } catch (e) {}
+  }
+
+  steamSearchCache.set(cleaned, null);
+  return null;
+}
 
 // Analyse et normalise la saisie de l'utilisateur (pseudo, URL ou SteamID64)
 function parseSteamInput(input) {
@@ -267,6 +367,10 @@ async function fetchSteamFullInfo(appId) {
     };
   });
 
+  // 7. Configuration requise PC & Poids du jeu (Espace disque)
+  const pcReq = data.pc_requirements || {};
+  const requirements = parseSystemRequirements(pcReq);
+
   return {
     appId,
     success: true,
@@ -281,6 +385,62 @@ async function fetchSteamFullInfo(appId) {
     modeDetails,
     screenshots,
     movies,
+    requirements,
+  };
+}
+
+function parseSystemRequirements(pcReq) {
+  if (!pcReq) return null;
+  const minHtml = (typeof pcReq === "object" && !Array.isArray(pcReq)) ? (pcReq.minimum || "") : (typeof pcReq === "string" ? pcReq : "");
+  const recHtml = (typeof pcReq === "object" && !Array.isArray(pcReq)) ? (pcReq.recommended || "") : "";
+
+  if (!minHtml && !recHtml) return null;
+
+  const extractStorageAndSpecs = (html) => {
+    if (!html) return { storage: null, specs: [], rawHtml: "" };
+
+    const cleanHtml = html.replace(/\u00a0|&nbsp;/g, " ");
+    const specs = [];
+    let storage = null;
+
+    const itemRegex = /<li>\s*<strong>\s*([^<:]+?)\s*:\s*<\/strong>\s*([\s\S]*?)(?:<br\s*\/?>\s*)?<\/li>/gi;
+    let match;
+    while ((match = itemRegex.exec(cleanHtml)) !== null) {
+      const label = match[1].replace(/<[^>]+>/g, "").trim();
+      const value = match[2].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+      if (label && value) {
+        specs.push({ label, value });
+        const labelLower = label.toLowerCase();
+        if (labelLower.includes("espace") || labelLower.includes("stockage") || labelLower.includes("storage") || labelLower.includes("disk")) {
+          const sizeMatch = value.match(/(\d+(?:\.\d+)?\s*(?:[KMGT]B|Go|Mo|To|Ko|GB|MB|TB))/i);
+          storage = sizeMatch ? sizeMatch[1].toUpperCase().replace("GO", "Go").replace("MO", "Mo").replace("TO", "To").replace("GB", "GB") : value;
+        }
+      }
+    }
+
+    if (!storage) {
+      const globalStorageMatch = cleanHtml.match(/(?:Espace disque|Storage|Espace de stockage|Disk space)\s*:\s*([^<]+)/i);
+      if (globalStorageMatch) {
+        const raw = globalStorageMatch[1].trim();
+        const sizeMatch = raw.match(/(\d+(?:\.\d+)?\s*(?:[KMGT]B|Go|Mo|To|Ko|GB|MB|TB))/i);
+        storage = sizeMatch ? sizeMatch[1].toUpperCase().replace("GO", "Go").replace("MO", "Mo").replace("TO", "To").replace("GB", "GB") : raw;
+      }
+    }
+
+    return {
+      storage,
+      specs,
+      rawHtml: html,
+    };
+  };
+
+  const minimum = extractStorageAndSpecs(minHtml);
+  const recommended = extractStorageAndSpecs(recHtml);
+
+  return {
+    storage: minimum.storage || recommended.storage || null,
+    minimum,
+    recommended,
   };
 }
 
@@ -377,3 +537,104 @@ function extractGameModes(data) {
 
   return { modes, modeDetails: details.join(", ") };
 }
+
+// -----------------------------------------------------------------------------
+// Vérification automatique des mises à jour (GitHub)
+// -----------------------------------------------------------------------------
+const GITHUB_RAW_MANIFEST_URL = "https://raw.githubusercontent.com/Traycken/Crack-Game-Screenshots/main/manifest.json";
+
+function compareVersions(v1, v2) {
+  const p1 = (v1 || "").replace(/^v/, "").split(".").map((n) => parseInt(n, 10) || 0);
+  const p2 = (v2 || "").replace(/^v/, "").split(".").map((n) => parseInt(n, 10) || 0);
+  const maxLen = Math.max(p1.length, p2.length);
+  for (let i = 0; i < maxLen; i++) {
+    const num1 = p1[i] || 0;
+    const num2 = p2[i] || 0;
+    if (num1 > num2) return 1;
+    if (num1 < num2) return -1;
+  }
+  return 0;
+}
+
+function updateBadgeNotification(hasUpdate, remoteVersion = "") {
+  if (!chrome.action) return;
+  if (hasUpdate) {
+    chrome.action.setBadgeText({ text: "MAJ" });
+    chrome.action.setBadgeBackgroundColor({ color: "#e11d48" }); // Rouge vif très visible
+    if (chrome.action.setBadgeTextColor) {
+      chrome.action.setBadgeTextColor({ color: "#ffffff" });
+    }
+    const titleText = remoteVersion
+      ? `Game Sites - Mise à jour disponible (v${remoteVersion})`
+      : "Game Sites - Mise à jour disponible !";
+    chrome.action.setTitle({ title: titleText });
+  } else {
+    chrome.action.setBadgeText({ text: "" });
+    chrome.action.setTitle({ title: "Game Sites - Aperçu Screenshots" });
+  }
+}
+
+async function checkExtensionUpdates() {
+  const manifest = chrome.runtime.getManifest();
+  const currentVersion = manifest.version_name || manifest.version || "1.0.0";
+  try {
+    const res = await fetch(`${GITHUB_RAW_MANIFEST_URL}?t=${Date.now()}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    const remoteVersion = data.version_name || data.version;
+    const hasUpdate = Boolean(remoteVersion && compareVersions(remoteVersion, currentVersion) > 0);
+
+    await chrome.storage.local.set({
+      updateAvailable: hasUpdate,
+      latestVersion: remoteVersion || currentVersion,
+      currentVersion: currentVersion,
+      lastUpdateCheck: Date.now(),
+    });
+
+    updateBadgeNotification(hasUpdate, remoteVersion);
+
+    return {
+      success: true,
+      hasUpdate,
+      currentVersion,
+      latestVersion: remoteVersion,
+    };
+  } catch (err) {
+    console.warn("[Background] Update check error:", err);
+    return {
+      success: false,
+      error: err.message,
+    };
+  }
+}
+
+// Restauration du badge dès le démarrage du service worker
+chrome.storage.local.get(["updateAvailable", "latestVersion"], (data) => {
+  if (data.updateAvailable) {
+    updateBadgeNotification(true, data.latestVersion);
+  }
+});
+
+// Planification de la vérification automatique
+chrome.runtime.onInstalled.addListener(() => {
+  // Alarme toutes les 6 heures (360 min)
+  chrome.alarms.create("checkExtensionUpdate", { periodInMinutes: 360 });
+  checkExtensionUpdates();
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  checkExtensionUpdates();
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === "checkExtensionUpdate") {
+    checkExtensionUpdates();
+  }
+});
+
+
