@@ -51,10 +51,14 @@ Pour mettre à jour l'extension manuellement lorsqu'une nouvelle version est dis
 
 ## 🌟 Fonctionnalités
 
-- 📸 **Captures d'écran & Vidéos** : Aperçu rapide des images et vidéos du jeu depuis la page d'accueil ou les listes.
-- ⚙️ **Configurations requises & Comparateur PC** : Vérification rapide de la compatibilité avec votre matériel.
-- 🎮 **Synchronisation Steam** : Intégration avec votre liste de souhaits et bibliothèque Steam.
-- 🎛️ **Personnalisation** : Réglage de la taille des aperçus via la popup de l'extension.
+- 📸 **Captures d'écran & Vidéos** : Aperçu direct des galeries d'images et bandes-annonces/trailers (YouTube/Steam/HLS) sous chaque carte de jeu.
+- ♾️ **Défilement infini (*Infinite Scroll*)** : Chargement automatique des jeux suivants en faisant défiler la page, avec séparateurs visuels élégants (*Page 2*, *Page 3*, etc.).
+- 🧭 **Navigation dynamique (SPA)** : Changement de page instantané et recherche en tâche de fond sans rechargement de la fenêtre du navigateur.
+- 🔢 **Saut direct de page (Input INT)** : Accès direct à n'importe quelle page en tapant manuellement son numéro dans la barre de pagination.
+- 🔍 **Barre de recherche optimisée** : Recherche fluide avec historique des termes et bouton d'effacement rapide (croix ✕).
+- ⚙️ **Configurations requises & Comparateur PC** : Vérification immédiate de la compatibilité de votre matériel avec les spécifications minimales et recommandées.
+- 🎮 **Synchronisation Steam** : Badges dynamiques indiquant si le jeu est possédé ou présent dans votre liste de souhaits Steam, avis des joueurs, prix et modes de jeu.
+- 🎛️ **Personnalisation complète** : Réglage du nombre de colonnes, de lignes, du nombre maximal de captures et de la largeur d'affichage via le popup de l'extension.
 
 
 ## Screenshots
