@@ -65,6 +65,6 @@ Pour mettre à jour l'extension manuellement lorsqu'une nouvelle version est dis
 
 <div align="center">
 
-<img src="./Screenshot_7.png" alt="">
-<img src="./Screenshot_2.png" alt="">
-<img src="./Screenshot_8.png" alt="">
+<img src="./Screenshot_9.png" alt="">
+<img src="./Screenshot_10.png" alt="">
+<img src="./Screenshot_11.png" alt="">
