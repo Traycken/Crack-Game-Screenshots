@@ -151,6 +151,7 @@
     galleryRows: 2,
     maxTotalScreenshots: 30,
     maxContentWidthPct: 66.7,
+    textScale: 100,
   };
   const CARD_PADDING = 44;
   const SCREENSHOT_RATIO = 9 / 16;
@@ -166,6 +167,7 @@
       [storageKey("galleryRows")]: DEFAULTS.galleryRows,
       [storageKey("maxTotalScreenshots")]: DEFAULTS.maxTotalScreenshots,
       [storageKey("maxContentWidthPct")]: DEFAULTS.maxContentWidthPct,
+      [storageKey("textScale")]: DEFAULTS.textScale,
     };
   }
 
@@ -175,6 +177,7 @@
       galleryRows: raw[storageKey("galleryRows")] ?? DEFAULTS.galleryRows,
       maxTotalScreenshots: raw[storageKey("maxTotalScreenshots")] ?? DEFAULTS.maxTotalScreenshots,
       maxContentWidthPct: raw[storageKey("maxContentWidthPct")] ?? DEFAULTS.maxContentWidthPct,
+      textScale: raw[storageKey("textScale")] ?? DEFAULTS.textScale,
     };
   }
 
@@ -204,6 +207,8 @@
   function applySettings(settings) {
     lastSettings = settings;
     const root = document.documentElement.style;
+    const scale = Math.max(0.1, Math.min(2.0, (settings.textScale ?? 100) / 100));
+    root.setProperty("--lgsp-text-scale", `${scale}`);
     root.setProperty("--lgsp-gallery-columns", `${settings.galleryColumns}`);
     root.setProperty("--lgsp-gallery-rows", `${settings.galleryRows || 2}`);
     root.setProperty("--lgsp-gallery-gap", "6px");
@@ -392,14 +397,16 @@
       }
     }
 
-    // Déplacer la pagination .wp-pagenavi entre #header et #overall-container
-    const overall = document.querySelector("#overall-container");
-    const pagenavi = document.querySelector(".wp-pagenavi");
-    if (overall && pagenavi && overall.previousElementSibling !== pagenavi) {
-      overall.insertAdjacentElement("beforebegin", pagenavi);
+    // Gestion de la pagination .wp-pagenavi (barre latérale verticale flottante)
+    const allPagenavis = document.querySelectorAll(".wp-pagenavi");
+    if (allPagenavis.length > 1) {
+      for (let i = 1; i < allPagenavis.length; i++) {
+        allPagenavis[i].remove();
+      }
     }
+    const pagenavi = document.querySelector(".wp-pagenavi");
     if (pagenavi) {
-      renderPageJumpInput(pagenavi);
+      formatPagenavi(pagenavi);
     }
 
     // Suppression des widgets et de la sidebar
@@ -1425,7 +1432,6 @@
         reqBtn.type = "button";
         reqBtn.className = "lgsp-steam-badge lgsp-sysreq-btn";
         reqBtn.innerHTML = `⚙️ Config Min. <span class="lgsp-sysreq-arrow">▼</span>`;
-        reqBtn.title = "Afficher la configuration minimale requise";
 
         const popover = document.createElement("div");
         popover.className = "lgsp-sysreq-popover lgsp-hidden";
@@ -1493,7 +1499,6 @@
         compatBtn.type = "button";
         compatBtn.className = `lgsp-steam-badge lgsp-compat-btn lgsp-compat-${compat.status}`;
         compatBtn.innerHTML = `${compat.icon} <span>${compat.label}</span> <span class="lgsp-compat-arrow">▼</span>`;
-        compatBtn.title = "Voir le comparatif détaillé de votre PC";
 
         const compatPopover = document.createElement("div");
         compatPopover.className = "lgsp-compat-popover lgsp-hidden";
@@ -1678,7 +1683,47 @@
     } catch {}
   });
 
-  function openLightbox(item) {
+  const preloadedImagesCache = new Set();
+
+  function preloadImage(url) {
+    if (!url || typeof url !== "string" || preloadedImagesCache.has(url)) return;
+    preloadedImagesCache.add(url);
+    const img = new Image();
+    img.decoding = "async";
+    img.src = url;
+    if (typeof img.decode === "function") {
+      img.decode().catch(() => {});
+    }
+  }
+
+  function preloadLightboxItems(items, currentIndex = 0) {
+    if (!Array.isArray(items) || items.length === 0) return;
+    const len = items.length;
+    const sequence = [];
+    for (let offset = 1; offset <= Math.min(len - 1, 6); offset++) {
+      sequence.push((currentIndex + offset) % len);
+      sequence.push((currentIndex - offset + len) % len);
+    }
+    for (let i = 0; i < len; i++) {
+      if (!sequence.includes(i) && i !== currentIndex) {
+        sequence.push(i);
+      }
+    }
+
+    sequence.forEach((idx) => {
+      const it = items[idx];
+      if (!it) return;
+      const src = typeof it === "string" ? it : (it.type === "image" ? it.src : it.thumbnail);
+      if (src) preloadImage(src);
+    });
+  }
+
+  function openLightbox(itemOrList, initialIndex = 0) {
+    const items = Array.isArray(itemOrList) ? itemOrList : [itemOrList];
+    let currentIndex = Math.max(0, Math.min(items.length - 1, initialIndex));
+
+    preloadLightboxItems(items, currentIndex);
+
     const box = document.createElement("div");
     box.className = "lgsp-lightbox";
 
@@ -1688,75 +1733,40 @@
     closeBtn.setAttribute("aria-label", "Fermer");
     box.appendChild(closeBtn);
 
+    const prevBtn = document.createElement("button");
+    prevBtn.className = "lgsp-lightbox-arrow lgsp-lightbox-prev";
+    prevBtn.setAttribute("aria-label", "Précédent");
+    prevBtn.innerHTML = `
+      <span class="lgsp-lightbox-arrow-icon">
+        <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+      </span>
+    `;
+
+    const nextBtn = document.createElement("button");
+    nextBtn.className = "lgsp-lightbox-arrow lgsp-lightbox-next";
+    nextBtn.setAttribute("aria-label", "Suivant");
+    nextBtn.innerHTML = `
+      <span class="lgsp-lightbox-arrow-icon">
+        <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+      </span>
+    `;
+
+    const counter = document.createElement("div");
+    counter.className = "lgsp-lightbox-counter";
+
     const container = document.createElement("div");
     container.className = "lgsp-lightbox-content";
 
-    if (typeof item === "string" || item.type === "image") {
-      const src = typeof item === "string" ? item : item.src;
-      const img = document.createElement("img");
-      img.src = src;
-      container.appendChild(img);
-    } else if (item.type === "youtube") {
-      const iframe = document.createElement("iframe");
-      const url = item.embedUrl.includes("enablejsapi=1")
-        ? item.embedUrl
-        : `${item.embedUrl}${item.embedUrl.includes("?") ? "&" : "?"}enablejsapi=1`;
-      iframe.src = url;
-      iframe.setAttribute("allow", "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture");
-      iframe.setAttribute("allowfullscreen", "true");
-      iframe.className = "lgsp-lightbox-video";
-
-      const applyYoutubeVolume = () => {
-        try {
-          const volPercent = Math.round(currentMediaVolume * 100);
-          iframe.contentWindow.postMessage(
-            JSON.stringify({ event: "command", func: "setVolume", args: [volPercent] }),
-            "*"
-          );
-          iframe.contentWindow.postMessage(
-            JSON.stringify({ event: "listening" }),
-            "*"
-          );
-        } catch {}
-      };
-
-      iframe.addEventListener("load", () => {
-        applyYoutubeVolume();
-        setTimeout(applyYoutubeVolume, 300);
-        setTimeout(applyYoutubeVolume, 800);
-      });
-
-      container.appendChild(iframe);
-    } else if (item.type === "steam_movie") {
-      const video = document.createElement("video");
-      video.controls = true;
-      video.autoplay = true;
-      video.playsInline = true;
-      video.volume = currentMediaVolume;
-      video.className = "lgsp-lightbox-video";
-
-      let isReadyForUserChanges = false;
-
-      video.addEventListener("loadedmetadata", () => {
-        video.volume = currentMediaVolume;
-        setTimeout(() => {
-          isReadyForUserChanges = true;
-        }, 150);
-      });
-
-      video.addEventListener("volumechange", () => {
-        if (isReadyForUserChanges && !video.muted) {
-          saveNewVolume(video.volume);
-        }
-      });
-
-      attachVideoSource(video, item);
-      container.appendChild(video);
-    }
-
+    box.appendChild(prevBtn);
     box.appendChild(container);
+    box.appendChild(nextBtn);
+    box.appendChild(counter);
 
-    function close() {
+    function cleanupCurrentMedia() {
       const v = container.querySelector("video");
       if (v) {
         if (!v.muted) {
@@ -1765,19 +1775,160 @@
         if (v._hls) {
           v._hls.destroy();
         }
+        v.pause();
+        v.removeAttribute("src");
+        v.load();
       }
+      container.innerHTML = "";
+    }
+
+    function renderCurrentItem() {
+      cleanupCurrentMedia();
+      const item = items[currentIndex];
+      if (!item) return;
+
+      preloadLightboxItems(items, currentIndex);
+
+      if (items.length > 1) {
+        prevBtn.classList.remove("lgsp-hidden");
+        nextBtn.classList.remove("lgsp-hidden");
+        counter.textContent = `${currentIndex + 1} / ${items.length}`;
+        counter.classList.remove("lgsp-hidden");
+      } else {
+        prevBtn.classList.add("lgsp-hidden");
+        nextBtn.classList.add("lgsp-hidden");
+        counter.classList.add("lgsp-hidden");
+      }
+
+      if (typeof item === "string" || item.type === "image") {
+        const src = typeof item === "string" ? item : item.src;
+        const img = document.createElement("img");
+        img.src = src;
+        img.decoding = "async";
+        img.alt = (typeof item === "object" && item.title) ? item.title : "Capture d'écran";
+        container.appendChild(img);
+      } else if (item.type === "youtube") {
+        const iframe = document.createElement("iframe");
+        const url = item.embedUrl.includes("enablejsapi=1")
+          ? item.embedUrl
+          : `${item.embedUrl}${item.embedUrl.includes("?") ? "&" : "?"}enablejsapi=1`;
+        iframe.src = url;
+        iframe.setAttribute("allow", "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture");
+        iframe.setAttribute("allowfullscreen", "true");
+        iframe.className = "lgsp-lightbox-video";
+
+        const applyYoutubeVolume = () => {
+          try {
+            const volPercent = Math.round(currentMediaVolume * 100);
+            iframe.contentWindow.postMessage(
+              JSON.stringify({ event: "command", func: "setVolume", args: [volPercent] }),
+              "*"
+            );
+            iframe.contentWindow.postMessage(
+              JSON.stringify({ event: "listening" }),
+              "*"
+            );
+          } catch {}
+        };
+
+        iframe.addEventListener("load", () => {
+          applyYoutubeVolume();
+          setTimeout(applyYoutubeVolume, 300);
+          setTimeout(applyYoutubeVolume, 800);
+        });
+
+        container.appendChild(iframe);
+      } else if (item.type === "steam_movie") {
+        const video = document.createElement("video");
+        video.controls = true;
+        video.autoplay = true;
+        video.playsInline = true;
+        video.volume = currentMediaVolume;
+        video.className = "lgsp-lightbox-video";
+
+        // Spinner de chargement pour le Trailer dans la Lightbox
+        const spinner = document.createElement("div");
+        spinner.className = "lgsp-video-spinner";
+        spinner.innerHTML = `<div class="lgsp-spinner-ring"></div>`;
+
+        const hideSpinner = () => spinner.classList.add("lgsp-hidden");
+        const showSpinner = () => spinner.classList.remove("lgsp-hidden");
+
+        video.addEventListener("playing", hideSpinner);
+        video.addEventListener("canplay", hideSpinner);
+        video.addEventListener("timeupdate", () => {
+          if (video.currentTime > 0) hideSpinner();
+        });
+        video.addEventListener("waiting", showSpinner);
+        video.addEventListener("seeking", showSpinner);
+        video.addEventListener("seeked", hideSpinner);
+        video.addEventListener("error", hideSpinner);
+
+        let isReadyForUserChanges = false;
+
+        video.addEventListener("loadedmetadata", () => {
+          video.volume = currentMediaVolume;
+          setTimeout(() => {
+            isReadyForUserChanges = true;
+          }, 150);
+        });
+
+        video.addEventListener("volumechange", () => {
+          if (isReadyForUserChanges && !video.muted) {
+            saveNewVolume(video.volume);
+          }
+        });
+
+        attachVideoSource(video, item);
+        container.appendChild(video);
+        container.appendChild(spinner);
+      }
+    }
+
+    function goToPrev() {
+      if (items.length <= 1) return;
+      currentIndex = (currentIndex - 1 + items.length) % items.length;
+      renderCurrentItem();
+    }
+
+    function goToNext() {
+      if (items.length <= 1) return;
+      currentIndex = (currentIndex + 1) % items.length;
+      renderCurrentItem();
+    }
+
+    prevBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      goToPrev();
+    });
+
+    nextBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      goToNext();
+    });
+
+    function close() {
+      cleanupCurrentMedia();
       box.remove();
       document.removeEventListener("keydown", onKeyDown);
     }
 
     function onKeyDown(e) {
-      if (e.key === "Escape") close();
+      if (e.key === "Escape") {
+        close();
+      } else if (e.key === "ArrowLeft") {
+        goToPrev();
+      } else if (e.key === "ArrowRight") {
+        goToNext();
+      }
     }
 
     box.addEventListener("click", (e) => {
       if (e.target === box || e.target === closeBtn) close();
     });
+
     document.addEventListener("keydown", onKeyDown);
+    renderCurrentItem();
     document.body.appendChild(box);
   }
 
@@ -1987,7 +2138,7 @@
     }
 
     // 2. Vidéos et captures d'écran
-    mediaItems.forEach((item) => {
+    mediaItems.forEach((item, itemIdx) => {
       const itemWrap = document.createElement("div");
       itemWrap.className = "lgsp-gallery-item";
 
@@ -2082,6 +2233,24 @@
             video.playsInline = true;
             video.className = "lgsp-gallery-embed";
 
+            // Spinner de chargement dédié aux Trailers Steam
+            const spinner = document.createElement("div");
+            spinner.className = "lgsp-video-spinner";
+            spinner.innerHTML = `<div class="lgsp-spinner-ring"></div>`;
+
+            const hideSpinner = () => spinner.classList.add("lgsp-hidden");
+            const showSpinner = () => spinner.classList.remove("lgsp-hidden");
+
+            video.addEventListener("playing", hideSpinner);
+            video.addEventListener("canplay", hideSpinner);
+            video.addEventListener("timeupdate", () => {
+              if (video.currentTime > 0) hideSpinner();
+            });
+            video.addEventListener("waiting", showSpinner);
+            video.addEventListener("seeking", showSpinner);
+            video.addEventListener("seeked", hideSpinner);
+            video.addEventListener("error", hideSpinner);
+
             video.addEventListener("play", () => {
               video.volume = currentMediaVolume;
             });
@@ -2096,6 +2265,7 @@
 
             attachVideoSource(video, item);
             itemWrap.appendChild(video);
+            itemWrap.appendChild(spinner);
             itemWrap.appendChild(volControl);
             itemWrap.appendChild(progressBar);
           }
@@ -2144,7 +2314,7 @@
           e.preventDefault();
           e.stopPropagation();
           stopPreview();
-          openLightbox(item);
+          openLightbox(mediaItems, itemIdx);
         });
 
         // Clic molette (clic milieu) ouvre la page du jeu dans un nouvel onglet
@@ -2157,12 +2327,19 @@
           }
         });
       } else {
+        // Préchargement immédiat de l'image haute définition au survol de la vignette
+        itemWrap.addEventListener("mouseenter", () => {
+          if (item.src) preloadImage(item.src);
+          if (mediaItems[itemIdx + 1]?.src) preloadImage(mediaItems[itemIdx + 1].src);
+          if (mediaItems[itemIdx - 1]?.src) preloadImage(mediaItems[itemIdx - 1].src);
+        });
+
         // Clic gauche sur la vignette ouvre l'image en grand dans la Lightbox
         itemWrap.addEventListener("click", (e) => {
           if (e.button === 1 || e.which === 2) return;
           e.preventDefault();
           e.stopPropagation();
-          openLightbox(item);
+          openLightbox(mediaItems, itemIdx);
         });
 
         // Clic molette (clic milieu) ouvre la page du jeu dans un nouvel onglet
@@ -2192,12 +2369,12 @@
 
     const prevBtn = document.createElement("button");
     prevBtn.className = "lgsp-carousel-arrow lgsp-arrow-prev lgsp-hidden";
-    prevBtn.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>`;
+    prevBtn.innerHTML = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>`;
     prevBtn.setAttribute("aria-label", "Précédent");
 
     const nextBtn = document.createElement("button");
     nextBtn.className = "lgsp-carousel-arrow lgsp-arrow-next lgsp-hidden";
-    nextBtn.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>`;
+    nextBtn.innerHTML = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>`;
     nextBtn.setAttribute("aria-label", "Suivant");
 
     const track = document.createElement("div");
@@ -2667,8 +2844,25 @@
     if (footer) footer.remove();
   }
 
+  function cleanPostMeta(card) {
+    const meta = card.querySelector(".meta:not(.right), .meta");
+    if (!meta) return;
+    const text = (meta.textContent || "").trim();
+    // Ne garder que la date (ex: "Posted August 22, 2026")
+    const match = text.match(/(Posted\s+[A-Za-z]+\s+\d{1,2},?\s+\d{4})/i);
+    if (match && match[1]) {
+      meta.textContent = match[1].trim();
+    } else {
+      const parts = text.split(/\s+in\s+/i);
+      if (parts[0]) {
+        meta.textContent = parts[0].trim();
+      }
+    }
+  }
+
   function enhanceCard(card) {
     extractAndCleanCover(card);
+    cleanPostMeta(card);
     removeFooterMeta(card);
   }
 
@@ -2676,10 +2870,14 @@
     neutralizeAnnoyingPopups();
     adjustSkidrowElements();
     if (lastSettings) enforceMaxWidth(lastSettings);
+    const currentPageNum = getPageNumFromUrl(location.href);
     document.querySelectorAll(".wp-pagenavi, ul.uk-pagination").forEach((p) => {
-      renderPageJumpInput(p);
+      formatPagenavi(p);
     });
     document.querySelectorAll(`${cardSel}`).forEach((card) => {
+      if (!card.hasAttribute("data-lgsp-page")) {
+        card.setAttribute("data-lgsp-page", `${currentPageNum}`);
+      }
       if (!card.hasAttribute(PROCESSED_ATTR)) {
         enforceSingleColumnLayout(card);
         if (config.enhanceCard) enhanceCard(card);
@@ -2697,12 +2895,19 @@
   let infiniteLoaderEl = null;
   let infiniteSentinelEl = null;
   let userHasScrolled = false;
+  let scrollSpyTimer = null;
 
   window.addEventListener(
     "scroll",
     () => {
       if (window.scrollY > 40) {
         userHasScrolled = true;
+      }
+      if (!scrollSpyTimer) {
+        scrollSpyTimer = requestAnimationFrame(() => {
+          scrollSpyTimer = null;
+          updateActivePageFromScroll();
+        });
       }
     },
     { passive: true }
@@ -2790,6 +2995,162 @@
     return currentUrl.href;
   }
 
+  function getPageNumFromUrl(url) {
+    try {
+      const u = new URL(url || location.href, location.origin);
+      const m = u.pathname.match(/\/page\/(\d+)/i);
+      if (m && m[1]) return parseInt(m[1], 10);
+      const paged = u.searchParams.get("paged") || u.searchParams.get("page");
+      if (paged) return parseInt(paged, 10);
+    } catch {}
+    return 1;
+  }
+
+  function formatPagenavi(pagenavi) {
+    if (!pagenavi || pagenavi.hasAttribute("data-lgsp-formatted")) return;
+    pagenavi.setAttribute("data-lgsp-formatted", "1");
+
+    // 1. Détection et mémorisation du nombre total de pages
+    let maxPages = 9999;
+    const pagesSpan = pagenavi.querySelector("span.pages");
+    if (pagesSpan) {
+      const match = (pagesSpan.textContent || "").match(/of\s+([0-9,]+)/i);
+      if (match && match[1]) {
+        maxPages = parseInt(match[1].replace(/,/g, ""), 10) || 9999;
+      }
+    } else {
+      const lastA = pagenavi.querySelector("a.last");
+      if (lastA && lastA.href) {
+        const match = lastA.href.match(/\/page\/(\d+)/i);
+        if (match && match[1]) {
+          maxPages = parseInt(match[1], 10) || 9999;
+        }
+      }
+    }
+    pagenavi.setAttribute("data-max-pages", `${maxPages}`);
+
+    // 2. Formater le compteur en haut (Page X of Y)
+    const initialPage = getPageNumFromUrl(location.href);
+    if (pagesSpan) {
+      pagesSpan.innerHTML = `<strong>${initialPage}</strong><small>/ ${maxPages.toLocaleString()}</small>`;
+    }
+
+    // 3. Formulaire de saut direct
+    renderPageJumpInput(pagenavi);
+
+    // 4. Générer immédiatement la liste propre des boutons (élimine immédiatement 10, 20, 30, «, », etc.)
+    regeneratePagenaviRange(pagenavi, initialPage);
+  }
+
+  function setActivePageInPagenavi(pageNum) {
+    const pagenavi = document.querySelector(".wp-pagenavi");
+    if (!pagenavi) return;
+
+    const maxPages = parseInt(pagenavi.getAttribute("data-max-pages"), 10) || 9999;
+
+    // 1. Mettre à jour le compteur en haut (Page X of Y)
+    const pagesSpan = pagenavi.querySelector("span.pages");
+    if (pagesSpan) {
+      pagesSpan.innerHTML = `<strong>${pageNum}</strong><small>/ ${maxPages.toLocaleString()}</small>`;
+    }
+
+    // 2. Mettre à jour l'élément actif 'current' parmi les boutons de page
+    let foundTarget = false;
+    pagenavi.querySelectorAll("a.page, a, span.current").forEach((el) => {
+      if (el.classList.contains("pages") || el.closest(".lgsp-pagenavi-jump")) return;
+      const text = (el.textContent || "").trim();
+      const val = parseInt(text, 10);
+      if (val === pageNum) {
+        foundTarget = true;
+        if (el.tagName === "A") {
+          const span = document.createElement("span");
+          span.className = "current";
+          span.textContent = `${pageNum}`;
+          el.replaceWith(span);
+        }
+      } else if (el.classList.contains("current")) {
+        const a = document.createElement("a");
+        a.className = "page";
+        a.href = buildPageUrl(val || text);
+        a.textContent = text;
+        el.replaceWith(a);
+      }
+    });
+
+    // Si la page active n'est pas dans la liste actuelle des boutons affichés, on régénère la plage
+    if (!foundTarget) {
+      regeneratePagenaviRange(pagenavi, pageNum);
+    }
+  }
+
+  function regeneratePagenaviRange(pagenavi, activePage) {
+    const maxPages = parseInt(pagenavi.getAttribute("data-max-pages"), 10) || 9999;
+    let start = Math.max(1, activePage - 2);
+    let end = Math.min(maxPages, start + 4);
+    if (end - start < 4) {
+      start = Math.max(1, end - 4);
+    }
+
+    pagenavi.querySelectorAll("a, span").forEach((el) => {
+      if (el.classList.contains("pages") || el.classList.contains("lgsp-pagenavi-jump") || el.closest(".lgsp-pagenavi-jump")) return;
+      el.remove();
+    });
+
+    const jumpForm = pagenavi.querySelector(".lgsp-pagenavi-jump");
+
+    for (let p = start; p <= end; p++) {
+      if (p === activePage) {
+        const span = document.createElement("span");
+        span.className = "current";
+        span.textContent = `${p}`;
+        if (jumpForm) pagenavi.insertBefore(span, jumpForm);
+        else pagenavi.appendChild(span);
+      } else {
+        const a = document.createElement("a");
+        a.className = "page";
+        a.href = buildPageUrl(p);
+        a.textContent = `${p}`;
+        if (jumpForm) pagenavi.insertBefore(a, jumpForm);
+        else pagenavi.appendChild(a);
+      }
+    }
+  }
+
+  let currentActiveScrollPage = getPageNumFromUrl(location.href);
+
+  function updateActivePageFromScroll() {
+    const cards = document.querySelectorAll(`${cardSel}[data-lgsp-page]`);
+    if (!cards.length) return;
+
+    const targetY = window.innerHeight * 0.35;
+    let visiblePage = currentActiveScrollPage;
+
+    for (const card of cards) {
+      const rect = card.getBoundingClientRect();
+      if (rect.top <= targetY && rect.bottom >= targetY) {
+        const p = parseInt(card.getAttribute("data-lgsp-page"), 10);
+        if (!isNaN(p) && p >= 1) {
+          visiblePage = p;
+          break;
+        }
+      } else if (rect.top > targetY) {
+        const p = parseInt(card.getAttribute("data-lgsp-page"), 10);
+        if (!isNaN(p) && p >= 1 && visiblePage === currentActiveScrollPage) {
+          visiblePage = p;
+        }
+        break;
+      }
+    }
+
+    if (visiblePage !== currentActiveScrollPage) {
+      currentActiveScrollPage = visiblePage;
+      setActivePageInPagenavi(visiblePage);
+      try {
+        window.history.replaceState(null, "", buildPageUrl(visiblePage));
+      } catch (_) {}
+    }
+  }
+
   function renderPageJumpInput(pagenavi) {
     if (!pagenavi) return;
     if (pagenavi.querySelector(".lgsp-pagenavi-jump")) return;
@@ -2818,8 +3179,7 @@
     form.innerHTML = `
       <input type="number" min="1" max="${maxPages}" placeholder="N°" class="lgsp-pagenavi-input" aria-label="Numéro de page">
       <button type="submit" class="lgsp-pagenavi-submit" title="Aller à cette page">
-        <span>Aller</span>
-        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="9 18 15 12 9 6"></polyline>
         </svg>
       </button>
@@ -2897,12 +3257,14 @@
       }
 
       // 3. Mettre à jour la pagination à partir de la nouvelle page chargée
+      currentActiveScrollPage = getPageNumFromUrl(targetUrl);
       const newPagenavi = doc.querySelector(".wp-pagenavi, ul.uk-pagination");
       const currentPagenavis = document.querySelectorAll(".wp-pagenavi, ul.uk-pagination");
       if (newPagenavi) {
         currentPagenavis.forEach((cp) => {
+          cp.removeAttribute("data-lgsp-formatted");
           cp.innerHTML = newPagenavi.innerHTML;
-          renderPageJumpInput(cp);
+          formatPagenavi(cp);
         });
       }
 
@@ -3006,40 +3368,31 @@
       `;
 
       // Insertion du séparateur et des nouvelles cartes avant la sentinelle
+      const targetPageNum = getPageNumFromUrl(targetUrl);
+      separator.setAttribute("data-lgsp-page", `${targetPageNum}`);
+
       const mainContainer = document.querySelector(config.mainSelector) || (infiniteSentinelEl ? infiniteSentinelEl.parentElement : document.body);
       if (mainContainer) {
         if (infiniteSentinelEl && infiniteSentinelEl.parentNode === mainContainer) {
           mainContainer.insertBefore(separator, infiniteSentinelEl);
           newCards.forEach((card) => {
             const importedCard = document.importNode(card, true);
+            importedCard.setAttribute("data-lgsp-page", `${targetPageNum}`);
             mainContainer.insertBefore(importedCard, infiniteSentinelEl);
           });
         } else {
           mainContainer.appendChild(separator);
           newCards.forEach((card) => {
             const importedCard = document.importNode(card, true);
+            importedCard.setAttribute("data-lgsp-page", `${targetPageNum}`);
             mainContainer.appendChild(importedCard);
           });
         }
       }
 
-      // Mettre à jour la pagination affichée si présente
-      const newPagenavi = doc.querySelector(".wp-pagenavi, ul.uk-pagination");
-      const currentPagenavis = document.querySelectorAll(".wp-pagenavi, ul.uk-pagination");
-      if (newPagenavi) {
-        currentPagenavis.forEach((cp) => {
-          cp.innerHTML = newPagenavi.innerHTML;
-          renderPageJumpInput(cp);
-        });
-      }
-
-      // Mise à jour de l'URL dans la barre d'adresse sans recharger la page
-      try {
-        window.history.replaceState(null, "", targetUrl);
-      } catch (_) {}
-
       // Scanner et enrichir les nouvelles cartes
       scanForCards();
+      updateActivePageFromScroll();
     } catch (err) {
       console.warn("[Game Sites Screenshots] Erreur chargement page suivante :", err);
     } finally {
@@ -3117,14 +3470,44 @@
     setupInfiniteScroll();
 
     if (document.body) {
-      const mutationObserver = new MutationObserver(() => {
-        scanForCards();
+      let scanScheduled = false;
+      const mutationObserver = new MutationObserver((mutations) => {
+        let hasNewCards = false;
+        for (const m of mutations) {
+          for (const node of m.addedNodes) {
+            if (node.nodeType === 1) {
+              if (node.id === "lgsp-page-loader" || node.id === "lgsp-infinite-scroll-sentinel" || node.id === "lgsp-infinite-scroll-loader") {
+                continue;
+              }
+              if (node.matches && (node.matches(cardSel) || node.querySelector(cardSel))) {
+                hasNewCards = true;
+                break;
+              }
+            }
+          }
+          if (hasNewCards) break;
+        }
+        if (hasNewCards && !scanScheduled) {
+          scanScheduled = true;
+          requestAnimationFrame(() => {
+            scanScheduled = false;
+            scanForCards();
+          });
+        }
       });
       mutationObserver.observe(document.body, {
         childList: true,
         subtree: true,
       });
     }
+
+    // Écoute en direct des changements de réglages depuis la popup
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== "local") return;
+      chrome.storage.local.get(defaultsWithPrefix(), (settings) => {
+        applySettings(normalizeSettings(settings));
+      });
+    });
 
     // Lever l'écran de chargement dès que la structure initiale est prête
     requestAnimationFrame(() => {

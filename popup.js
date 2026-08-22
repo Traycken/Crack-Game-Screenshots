@@ -47,9 +47,10 @@ const DEFAULTS = {
   galleryRows: 2,
   maxTotalScreenshots: 30,
   maxContentWidth: 66.7, // pourcentage de la largeur de la fenêtre
+  textScale: 100, // pourcentage d'échelle de taille de texte
 };
 
-const RANGE_FIELDS = ["galleryColumns", "galleryRows", "maxTotalScreenshots", "maxContentWidth"];
+const RANGE_FIELDS = ["galleryColumns", "galleryRows", "maxTotalScreenshots", "maxContentWidth", "textScale"];
 
 let currentHost = null;
 
@@ -60,6 +61,7 @@ function keyFor(field) {
 
 function labelFor(field, value) {
   if (field === "galleryColumns" || field === "galleryRows" || field === "maxTotalScreenshots") return `${value}`;
+  if (field === "textScale") return `${Math.round(value)}%`;
   return `${Number(value).toFixed(1)}%`;
 }
 
@@ -74,6 +76,7 @@ function loadSettings() {
     [keyFor("galleryRows")]: DEFAULTS.galleryRows,
     [keyFor("maxTotalScreenshots")]: DEFAULTS.maxTotalScreenshots,
     [keyFor("maxContentWidth")]: DEFAULTS.maxContentWidth,
+    [keyFor("textScale")]: DEFAULTS.textScale,
   };
   chrome.storage.local.get(defaults, (settings) => {
     RANGE_FIELDS.forEach((field) => {

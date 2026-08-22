@@ -75,6 +75,7 @@ html.lgsp-loading {
     border: 1px solid rgba(127, 127, 127, 0.15);
     transition: box-shadow 0.15s ease;
     box-sizing: border-box;
+    font-size: calc(14px * var(--lgsp-text-scale, 1)) !important;
 }
 
 .lgsp-card:hover {
@@ -150,6 +151,7 @@ html.lgsp-skidrow-listing #overall-container .post {
     padding: 18px 22px !important;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     transition: border-color 0.15s ease;
+    font-size: calc(14px * var(--lgsp-text-scale, 1)) !important;
 }
 
 html.lgsp-skidrow-listing #overall-container .post:hover {
@@ -177,8 +179,7 @@ html.lgsp-skidrow-listing #overall-container .post .clear {
     display: none;
 }
 
-/* Ligne "Posted ... in ..." -> catégories transformées en badges discrets */
-
+/* Ligne de date "Posted [Date]" */
 html.lgsp-skidrow-listing #overall-container .post > .meta {
     font-size: 0.72em;
     text-transform: uppercase;
@@ -187,43 +188,63 @@ html.lgsp-skidrow-listing #overall-container .post > .meta {
     margin-bottom: 10px;
 }
 
-html.lgsp-skidrow-listing #overall-container .post > .meta a {
-    display: inline-block;
-    color: var(--lgsp-sr-accent);
-    background: var(--lgsp-sr-accent-soft);
-    padding: 2px 8px;
-    border-radius: 999px;
-    text-decoration: none;
-    margin-left: 4px;
-}
-
 /* Neutralisation de l'extrait vertical sur les listes Skidrow */
 html.lgsp-skidrow-listing #overall-container .post-excerpt {
     display: none !important;
 }
 
 /* =====================================================================
-   Pagination moderne (SkidrowReloaded & WP-PageNavi)
+   Pagination moderne verticale (Flottante sur le côté gauche)
    ===================================================================== */
 
 html.lgsp-skidrow-listing .wp-pagenavi,
 .wp-pagenavi {
+    position: fixed !important;
+    left: 50px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    z-index: 1000 !important;
     display: flex !important;
-    flex-wrap: wrap !important;
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
     align-items: center !important;
     justify-content: center !important;
     gap: 6px !important;
-    margin: 12px 0 24px !important;
-    padding: 12px 16px !important;
-    background: #1b1d22 !important;
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    margin: 0 !important;
+    padding: 10px 8px !important;
+    background: rgba(22, 24, 29, 0.95) !important;
+    backdrop-filter: blur(10px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
     border-radius: 12px !important;
-    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25) !important;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5) !important;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-    font-size: 13.5px !important;
+    font-size: calc(13px * var(--lgsp-text-scale, 1)) !important;
     box-sizing: border-box !important;
-    clear: both !important;
-    width: 100% !important;
+    width: auto !important;
+    min-width: 52px !important;
+    max-width: 64px !important;
+    max-height: calc(100vh - 80px) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    scrollbar-width: none !important;
+    clear: none !important;
+}
+
+.wp-pagenavi::-webkit-scrollbar {
+    display: none !important;
+}
+
+/* Masquer complètement les flèches, extensions (...) et sauts de dizaines */
+.wp-pagenavi a.first,
+.wp-pagenavi a.last,
+.wp-pagenavi a.previouspostslink,
+.wp-pagenavi a.nextpostslink,
+.wp-pagenavi a.larger_page,
+.wp-pagenavi a.smaller_page,
+.wp-pagenavi a.larger_page_numbers,
+.wp-pagenavi a.smaller_page_numbers,
+.wp-pagenavi span.extend {
+    display: none !important;
 }
 
 .wp-pagenavi span,
@@ -231,42 +252,70 @@ html.lgsp-skidrow-listing .wp-pagenavi,
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    min-width: 38px !important;
-    height: 38px !important;
-    padding: 0 10px !important;
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 36px !important;
+    padding: 0 !important;
     border-radius: 8px !important;
     font-weight: 600 !important;
     text-decoration: none !important;
     box-sizing: border-box !important;
     line-height: 1 !important;
-    transition: all 0.15s ease !important;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease !important;
     user-select: none !important;
+    flex-shrink: 0 !important;
 }
 
-/* Texte "Page X of Y" */
+/* Texte "Page X of Y" transformé en badge épuré */
 .wp-pagenavi span.pages {
     background: rgba(255, 255, 255, 0.04) !important;
     color: #93969f !important;
-    border: 1px solid rgba(255, 255, 255, 0.07) !important;
-    font-size: 12.5px !important;
-    padding: 0 14px !important;
-    margin-right: 4px !important;
-    min-width: auto !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    padding: 6px 4px !important;
+    margin-right: 0 !important;
+    margin-bottom: 4px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    text-align: center !important;
+    line-height: 1.3 !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    border-radius: 8px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.wp-pagenavi span.pages strong {
+    color: #cf9f4f !important;
+    font-size: 13px !important;
+    line-height: 1.1 !important;
+}
+
+.wp-pagenavi span.pages small {
+    color: #8a8d98 !important;
+    font-size: 9.5px !important;
+    font-weight: 500 !important;
 }
 
 /* Liens des numéros de pages */
 .wp-pagenavi a {
     background: #23262d !important;
     color: #d1d5db !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
+/* Hover sobre sans transform ni décalage */
 .wp-pagenavi a:hover {
     background: #2d313b !important;
     color: #ffffff !important;
     border-color: #cf9f4f !important;
-    transform: translateY(-1.5px) !important;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35) !important;
+    transform: none !important;
+    box-shadow: none !important;
 }
 
 /* Page courante active */
@@ -275,61 +324,38 @@ html.lgsp-skidrow-listing .wp-pagenavi,
     color: #121316 !important;
     border: 1px solid #cf9f4f !important;
     font-weight: 700 !important;
-    box-shadow: 0 2px 10px rgba(207, 159, 79, 0.35) !important;
+    box-shadow: none !important;
 }
 
-/* Séparateur d'extension (...) */
-.wp-pagenavi span.extend {
-    background: transparent !important;
-    border: none !important;
-    color: #93969f !important;
-    min-width: 22px !important;
-    font-size: 15px !important;
-    letter-spacing: 2px !important;
-}
-
-/* Liens Last / First / Flèches */
-.wp-pagenavi a.last,
-.wp-pagenavi a.first,
-.wp-pagenavi a.previouspostslink,
-.wp-pagenavi a.nextpostslink {
-    padding: 0 14px !important;
-    color: #cf9f4f !important;
-    font-weight: 700 !important;
-}
-
-.wp-pagenavi a.last:hover,
-.wp-pagenavi a.first:hover,
-.wp-pagenavi a.previouspostslink:hover,
-.wp-pagenavi a.nextpostslink:hover {
-    background: #cf9f4f !important;
-    color: #121316 !important;
-}
-
-/* Formulaire de saut direct vers une page (Input INT) */
+/* Formulaire de saut direct vers une page (Input INT) en vertical */
 .lgsp-pagenavi-jump {
-    display: inline-flex !important;
+    display: flex !important;
+    flex-direction: column !important;
     align-items: center !important;
     gap: 4px !important;
-    margin-left: 6px !important;
-    padding-left: 8px !important;
-    border-left: 1px solid rgba(255, 255, 255, 0.12) !important;
+    margin-left: 0 !important;
+    margin-top: 4px !important;
+    padding-left: 0 !important;
+    padding-top: 8px !important;
+    border-left: none !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+    width: 100% !important;
 }
 
 .lgsp-pagenavi-input {
-    width: 52px !important;
-    height: 38px !important;
+    width: 36px !important;
+    height: 32px !important;
     background: #23262d !important;
-    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
     border-radius: 8px !important;
     color: #e7e8ec !important;
     font-family: inherit !important;
-    font-size: 13px !important;
+    font-size: 12px !important;
     font-weight: 600 !important;
     text-align: center !important;
-    padding: 0 4px !important;
+    padding: 0 !important;
     outline: none !important;
-    transition: all 0.15s ease !important;
+    transition: border-color 0.15s ease, background 0.15s ease !important;
     box-sizing: border-box !important;
     -moz-appearance: textfield;
 }
@@ -342,7 +368,7 @@ html.lgsp-skidrow-listing .wp-pagenavi,
 
 .lgsp-pagenavi-input:focus {
     border-color: #cf9f4f !important;
-    box-shadow: 0 0 8px rgba(207, 159, 79, 0.3) !important;
+    box-shadow: 0 0 6px rgba(207, 159, 79, 0.3) !important;
     background: #282c35 !important;
 }
 
@@ -350,18 +376,19 @@ html.lgsp-skidrow-listing .wp-pagenavi,
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 4px !important;
-    height: 38px !important;
-    padding: 0 10px !important;
+    gap: 0 !important;
+    width: 36px !important;
+    height: 28px !important;
+    padding: 0 !important;
     background: #2b2f38 !important;
-    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
     border-radius: 8px !important;
     color: #cf9f4f !important;
     font-family: inherit !important;
-    font-size: 12px !important;
+    font-size: 11px !important;
     font-weight: 700 !important;
     cursor: pointer !important;
-    transition: all 0.15s ease !important;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease !important;
     user-select: none !important;
     box-sizing: border-box !important;
 }
@@ -370,8 +397,15 @@ html.lgsp-skidrow-listing .wp-pagenavi,
     background: #cf9f4f !important;
     color: #121316 !important;
     border-color: #cf9f4f !important;
-    transform: translateY(-1px) !important;
-    box-shadow: 0 2px 8px rgba(207, 159, 79, 0.35) !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+@media (max-width: 1400px) {
+    html.lgsp-skidrow-listing .wp-pagenavi,
+    .wp-pagenavi {
+        left: 14px !important;
+    }
 }
 
 /* =====================================================================
@@ -1216,35 +1250,48 @@ html.lgsp-skidrow-listing #overall-container .lgsp-gallery-container {
     top: 50%;
     transform: translateY(-50%);
     z-index: 15;
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
-    background: rgba(20, 20, 25, 0.85);
+    background: rgba(20, 20, 25, 0.88);
     backdrop-filter: blur(6px);
-    border: 1px solid rgba(255, 255, 255, 0.25);
+    border: 1.5px solid rgba(255, 255, 255, 0.3);
     color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: background 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    transition: background 0.15s ease, transform 0.15s ease, opacity 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
     padding: 0;
 }
 
+.lgsp-carousel-arrow svg {
+    width: 22px;
+    height: 22px;
+    display: block;
+    pointer-events: none;
+    transition: transform 0.15s ease;
+}
+
 .lgsp-arrow-prev {
-    left: -14px;
+    left: -20px;
 }
 
 .lgsp-arrow-next {
-    right: -14px;
+    right: -20px;
 }
 
 .lgsp-carousel-arrow:hover {
     background: #cf9f4f;
     color: #1b1d22;
-    transform: translateY(-50%) scale(1.1);
+    transform: translateY(-50%) scale(1.12);
     border-color: #cf9f4f;
+    box-shadow: 0 6px 18px rgba(207, 159, 79, 0.45);
+}
+
+.lgsp-carousel-arrow:active {
+    transform: translateY(-50%) scale(1.02);
 }
 
 .lgsp-carousel-arrow.lgsp-hidden {
@@ -1362,8 +1409,41 @@ html.lgsp-skidrow-listing #overall-container .lgsp-gallery-container {
     position: absolute;
     inset: 0;
     z-index: 10;
-    cursor: zoom-in;
-    background: transparent;
+    cursor: pointer;
+}
+
+/* Spinner de chargement dédié aux vidéos Trailer Steam */
+.lgsp-video-spinner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(18, 19, 22, 0.65);
+    backdrop-filter: blur(4px);
+    z-index: 9;
+    pointer-events: none;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.lgsp-video-spinner.lgsp-hidden {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.lgsp-spinner-ring {
+    width: 34px;
+    height: 34px;
+    border: 3.5px solid rgba(255, 255, 255, 0.18);
+    border-top-color: #cf9f4f;
+    border-radius: 50%;
+    animation: lgsp-spin 0.75s linear infinite;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
+}
+
+@keyframes lgsp-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 /* Curseur de volume flottant sur les prévisualisations vidéo */
@@ -1512,46 +1592,144 @@ html.lgsp-skidrow-listing #overall-container .lgsp-gallery-container {
 }
 
 /* =====================================================================
-   Lightbox (Support Images et Vidéos)
+   Lightbox (Support Images et Vidéos avec Navigation Plein Écran)
    ===================================================================== */
 
 .lgsp-lightbox {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.92);
+    background: rgba(0, 0, 0, 0.94);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 999999;
+    padding: 0;
+    box-sizing: border-box;
+    user-select: none;
+}
+
+/* Boutons flèches couvrant tout le côté du bord de l'image au bord de la page */
+.lgsp-lightbox-arrow {
+    flex: 1 1 0;
+    height: 100%;
+    min-width: 60px;
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 999999;
-    padding: 20px;
-    box-sizing: border-box;
+    background: transparent;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    z-index: 10;
+    padding: 0;
+    margin: 0;
+    position: relative;
+    transition: background 0.2s ease;
+}
+
+.lgsp-lightbox-prev:hover {
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.01) 100%);
+}
+
+.lgsp-lightbox-next:hover {
+    background: linear-gradient(270deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.01) 100%);
+}
+
+.lgsp-lightbox-arrow-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: rgba(20, 20, 25, 0.82);
+    backdrop-filter: blur(8px);
+    border: 1.5px solid rgba(255, 255, 255, 0.28);
+    color: #ffffff;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+    pointer-events: none;
+}
+
+.lgsp-lightbox-arrow:hover .lgsp-lightbox-arrow-icon {
+    transform: scale(1.18);
+    background: #cf9f4f;
+    border-color: #cf9f4f;
+    color: #121316;
+    box-shadow: 0 6px 26px rgba(207, 159, 79, 0.5);
+}
+
+.lgsp-lightbox-arrow:active .lgsp-lightbox-arrow-icon {
+    transform: scale(1.02);
+}
+
+.lgsp-lightbox-arrow.lgsp-hidden {
+    display: none !important;
 }
 
 .lgsp-lightbox-content {
-    max-width: 92vw;
+    flex: 0 1 auto;
+    max-width: calc(100vw - 160px);
     max-height: 90vh;
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative;
+    z-index: 5;
+    pointer-events: auto;
 }
 
 .lgsp-lightbox-content img {
-    max-width: 92vw;
+    max-width: calc(100vw - 160px);
     max-height: 88vh;
     border-radius: 6px;
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.85);
     object-fit: contain;
+    animation: lgsp-lightbox-fade-in 0.12s ease-out;
+}
+
+@keyframes lgsp-lightbox-fade-in {
+    from {
+        opacity: 0.75;
+        transform: scale(0.99);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
 .lgsp-lightbox-video {
-    width: 85vw;
-    height: calc(85vw * 9 / 16);
-    max-width: 1200px;
-    max-height: 75vh;
+    width: min(80vw, 1200px);
+    height: calc(min(80vw, 1200px) * 9 / 16);
+    max-height: 78vh;
     border-radius: 8px;
     border: none;
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.9);
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
     background: #000;
+}
+
+.lgsp-lightbox-counter {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(18, 20, 24, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 999px;
+    padding: 5px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #e7e8ec;
+    letter-spacing: 0.5px;
+    z-index: 1000000;
+    pointer-events: none;
+    backdrop-filter: blur(6px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.lgsp-lightbox-counter.lgsp-hidden {
+    display: none !important;
 }
 
 .lgsp-lightbox-close {
