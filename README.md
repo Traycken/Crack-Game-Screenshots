@@ -56,6 +56,17 @@ Pour mettre à jour l'extension manuellement lorsqu'une nouvelle version est dis
 - 🧭 **Navigation dynamique (SPA)** : Changement de page instantané et recherche en tâche de fond sans rechargement de la fenêtre du navigateur.
 - 🔢 **Saut direct de page (Input INT)** : Accès direct à n'importe quelle page en tapant manuellement son numéro dans la barre de pagination.
 - 🔍 **Barre de recherche optimisée** : Recherche fluide avec historique des termes et bouton d'effacement rapide (croix ✕).
+- 💾 **Gestion Intelligente du Cache API (L1/L2)** :
+  - Mise en cache persistante des fiches Steam, requêtes de recherche et pages scrapées pour réduire de 90% à 95% les requêtes HTTP.
+  - Algorithme d'éviction intelligent **LRU / LFU** : suppression automatique des éléments les plus anciens et les moins utilisés lorsque la taille limite est atteinte.
+  - Réglage de la limite de taille (5 Mo à 200 Mo), de la durée de validité (TTL) et bouton de purge complète dans le panneau de paramètres (`⚙️`).
+- 🛡️ **Optimisation de la RAM & GPU (Scroll Virtualizer)** :
+  - Déchargement automatique de la mémoire vive des captures et vidéos des cartes situées loin hors de l'écran lors du défilement.
+  - **Zéro décalage de mise en page (*Cumulative Layout Shift = 0*)** : les dimensions de chaque élément sont strictement préservées.
+  - Réhydratation anticipée et transparente dès que vous remontez vers une carte précédente.
+- ⚡ **Classement & Évaluation des Liens de Téléchargement** :
+  - Analyse et double notation de chaque hébergeur (Sécurité / Anti-pub et Débit gratuit non-abonné) avec badges de niveau (*Tier S, A, B, C, D*).
+  - Tri automatique des meilleurs hébergeurs en tête de liste et gestion des hébergeurs favoris (⭐).
 - ⚙️ **Configurations requises & Comparateur PC** : Vérification immédiate de la compatibilité de votre matériel avec les spécifications minimales et recommandées.
 - 🎮 **Synchronisation Steam** : Badges dynamiques indiquant si le jeu est possédé ou présent dans votre liste de souhaits Steam, avis des joueurs, prix et modes de jeu.
-- 🎛️ **Personnalisation complète** : Réglage du nombre de colonnes, de lignes, du nombre maximal de captures et de la largeur d'affichage via le popup de l'extension.
+- 🎛️ **Personnalisation complète** : Réglage du nombre de colonnes, de lignes, du nombre maximal de captures, de la largeur d'affichage et de l'échelle des textes via le popup.

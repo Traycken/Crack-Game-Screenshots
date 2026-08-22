@@ -103,6 +103,47 @@
       <div id="steamStatus" class="steam-status" hidden></div>
     </div>
 
+    <!-- SECTION GESTION DU CACHE -->
+    <div class="cache-section">
+      <div class="cache-section-header">
+        <h2>Gestion du Cache API</h2>
+        <span id="cacheUsageBadge" class="cache-usage-badge">0 Ko / 25 Mo</span>
+      </div>
+      <p class="cache-help">Mémorise les fiches Steam, recherches et pages pour un affichage instantané et sans requêtes inutiles.</p>
+
+      <div class="cache-stats-card">
+        <div class="cache-stat-item">
+          <span class="cache-stat-label">Éléments en cache</span>
+          <strong id="cacheCountStat" class="cache-stat-value">0</strong>
+        </div>
+        <div class="cache-stat-item">
+          <span class="cache-stat-label">Taille totale</span>
+          <strong id="cacheSizeStat" class="cache-stat-value">0 Ko</strong>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">
+          <label for="cacheMaxMb">Limite de taille max</label>
+          <span class="value" id="cacheMaxMbValue">25 Mo</span>
+        </div>
+        <input type="range" id="cacheMaxMb" min="5" max="200" step="5" value="25">
+        <small class="field-hint">Écrase automatiquement les éléments les plus anciens et les moins utilisés (LRU).</small>
+      </div>
+
+      <div class="field">
+        <div class="field-label">
+          <label for="cacheTtlDays">Durée de validité</label>
+          <span class="value" id="cacheTtlDaysValue">7 jours</span>
+        </div>
+        <input type="range" id="cacheTtlDays" min="1" max="60" step="1" value="7">
+        <small class="field-hint">Délai avant de considérer un élément comme obsolète et le réactualiser.</small>
+      </div>
+
+      <button type="button" id="clearCacheBtn" class="clear-cache-btn">🗑️ Vider tout le cache</button>
+      <div id="cacheStatusMsg" class="cache-status-msg" hidden></div>
+    </div>
+
     <div class="about-section">
       <h2>À propos</h2>
       <div class="about-card">

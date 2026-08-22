@@ -4,6 +4,219 @@
 const steamGameCache = new Map();
 const steamSearchCache = new Map();
 
+// Configuration par défaut du cache
+const DEFAULT_CACHE_CONFIG = {
+  maxMb: 25, // 25 Mo max
+  ttlDays: 7, // 7 jours de validité
+};
+
+const isCacheKey = (k) =>
+  typeof k === "string" &&
+  (k.startsWith("lgsp_g_") || k.startsWith("lgsp_s_") || k.startsWith("lgsp_p_") || k.startsWith("lgsp_cache_"));
+
+function hashString(str) {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) + str.charCodeAt(i);
+    hash = hash & hash;
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function estimateSize(obj) {
+  try {
+    return JSON.stringify(obj).length * 2;
+  } catch (e) {
+    return 1024;
+  }
+}
+
+function formatBytes(bytes) {
+  if (!bytes || bytes <= 0) return "0 Ko";
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} Ko`;
+  }
+  return `${(bytes / (1024 * 1024)).toFixed(2)} Mo`;
+}
+
+// Récupération depuis le stockage persistant chrome.storage.local avec mise à jour du dernier accès
+async function getStorageCache(key) {
+  try {
+    const configRes = await chrome.storage.local.get(["cacheTtlDays"]);
+    const ttlDays = Number(configRes.cacheTtlDays) || DEFAULT_CACHE_CONFIG.ttlDays;
+    const ttlMs = ttlDays * 24 * 60 * 60 * 1000;
+
+    const res = await chrome.storage.local.get([key]);
+    const item = res ? res[key] : null;
+    if (!item) return null;
+
+    const now = Date.now();
+    const isExpired = (item.expiresAt && item.expiresAt < now) ||
+                      (item.createdAt && (now - item.createdAt > ttlMs));
+
+    if (isExpired) {
+      chrome.storage.local.remove([key]);
+      return null;
+    }
+
+    // Mise à jour de la date de dernier accès et du compteur d'utilisations (LRU / LFU)
+    item.lastAccessedAt = now;
+    item.hitCount = (item.hitCount || 0) + 1;
+    chrome.storage.local.set({ [key]: item }).catch(() => {});
+
+    return item.data;
+  } catch (e) {}
+  return null;
+}
+
+// Sauvegarde dans chrome.storage.local avec éviction automatique LRU/LFU si la taille max est atteinte
+async function setStorageCache(key, data, customTtl) {
+  try {
+    const configRes = await chrome.storage.local.get(["cacheMaxMb", "cacheTtlDays"]);
+    const maxMb = Number(configRes.cacheMaxMb) || DEFAULT_CACHE_CONFIG.maxMb;
+    const ttlDays = Number(configRes.cacheTtlDays) || DEFAULT_CACHE_CONFIG.ttlDays;
+    const maxBytes = maxMb * 1024 * 1024;
+    const ttlMs = customTtl || (ttlDays * 24 * 60 * 60 * 1000);
+
+    const now = Date.now();
+    const entry = {
+      data,
+      createdAt: now,
+      lastAccessedAt: now,
+      hitCount: 1,
+      expiresAt: now + ttlMs,
+    };
+    const entrySize = estimateSize(entry);
+    entry.sizeBytes = entrySize;
+
+    // Analyse du volume total du cache actuel
+    const all = await chrome.storage.local.get(null);
+    let totalBytes = 0;
+    const cacheEntries = [];
+
+    for (const [k, v] of Object.entries(all)) {
+      if (isCacheKey(k) && v && typeof v === "object") {
+        const sz = v.sizeBytes || estimateSize(v);
+        totalBytes += sz;
+        cacheEntries.push({ key: k, val: v, size: sz });
+      }
+    }
+
+    // Si l'ajout dépasse la taille maximale autorisée, on évince les plus anciens / moins utilisés
+    if (totalBytes + entrySize > maxBytes) {
+      cacheEntries.sort((a, b) => {
+        // Supprimer en premier les éléments expirés
+        const expA = a.val.expiresAt && a.val.expiresAt < now ? 0 : 1;
+        const expB = b.val.expiresAt && b.val.expiresAt < now ? 0 : 1;
+        if (expA !== expB) return expA - expB;
+
+        // Score composite d'éviction : Date de dernier accès + bonus de fréquence
+        const scoreA = (a.val.lastAccessedAt || a.val.createdAt || 0) + ((a.val.hitCount || 1) * 3600000);
+        const scoreB = (b.val.lastAccessedAt || b.val.createdAt || 0) + ((b.val.hitCount || 1) * 3600000);
+        return scoreA - scoreB;
+      });
+
+      const keysToRemove = [];
+      let freedBytes = 0;
+      const targetFreed = (totalBytes + entrySize) - (maxBytes * 0.85); // Libérer jusqu'à 85% de la limite
+
+      for (const item of cacheEntries) {
+        if (freedBytes >= targetFreed && (totalBytes + entrySize - freedBytes) <= maxBytes) break;
+        keysToRemove.push(item.key);
+        freedBytes += item.size;
+      }
+
+      if (keysToRemove.length > 0) {
+        await chrome.storage.local.remove(keysToRemove);
+        console.log(`[Cache LRU] Éviction : ${formatBytes(freedBytes)} libérés (${keysToRemove.length} entrées supprimées).`);
+      }
+    }
+
+    await chrome.storage.local.set({ [key]: entry });
+  } catch (e) {
+    console.warn("[Cache Error]", e);
+  }
+}
+
+// Calcul des statistiques complètes du cache
+async function getCacheStats() {
+  try {
+    const all = await chrome.storage.local.get(null);
+    let count = 0;
+    let totalBytes = 0;
+    const now = Date.now();
+
+    for (const [k, v] of Object.entries(all)) {
+      if (isCacheKey(k) && v && typeof v === "object") {
+        count++;
+        totalBytes += v.sizeBytes || estimateSize(v);
+      }
+    }
+
+    const maxMb = Number(all.cacheMaxMb) || DEFAULT_CACHE_CONFIG.maxMb;
+    const ttlDays = Number(all.cacheTtlDays) || DEFAULT_CACHE_CONFIG.ttlDays;
+    const maxBytes = maxMb * 1024 * 1024;
+    const usagePercent = maxBytes > 0 ? Math.min(100, Math.round((totalBytes / maxBytes) * 100)) : 0;
+
+    return {
+      success: true,
+      count,
+      totalBytes,
+      formattedSize: formatBytes(totalBytes),
+      maxMb,
+      ttlDays,
+      usagePercent,
+    };
+  } catch (e) {
+    return { success: false, count: 0, totalBytes: 0, formattedSize: "0 Ko", maxMb: 25, ttlDays: 7, usagePercent: 0 };
+  }
+}
+
+// Vider l'intégralité du cache
+async function clearAllCache() {
+  steamGameCache.clear();
+  steamSearchCache.clear();
+
+  const all = await chrome.storage.local.get(null);
+  const keysToRemove = Object.keys(all).filter((k) => isCacheKey(k));
+  if (keysToRemove.length > 0) {
+    await chrome.storage.local.remove(keysToRemove);
+  }
+
+  // Notifier tous les onglets actifs pour vider leur cache mémoire
+  try {
+    chrome.tabs.query({}, (tabs) => {
+      tabs.forEach((t) => {
+        if (t.id) chrome.tabs.sendMessage(t.id, { type: "CACHE_CLEARED" }).catch(() => {});
+      });
+    });
+  } catch (e) {}
+
+  return { success: true, count: keysToRemove.length };
+}
+
+// Nettoyage périodique au démarrage
+async function cleanExpiredStorageCache() {
+  try {
+    const all = await chrome.storage.local.get(null);
+    const keysToRemove = [];
+    const now = Date.now();
+    for (const [key, val] of Object.entries(all)) {
+      if (isCacheKey(key) && val && typeof val === "object" && val.expiresAt) {
+        if (val.expiresAt < now) {
+          keysToRemove.push(key);
+        }
+      }
+    }
+    if (keysToRemove.length > 0) {
+      await chrome.storage.local.remove(keysToRemove);
+      console.log(`[Cache] ${keysToRemove.length} entrées expirées supprimées au démarrage.`);
+    }
+  } catch (e) {}
+}
+
+cleanExpiredStorageCache();
+
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === "STEAM_GAME_INFO" || msg.type === "STEAM_LANG_CHECK") {
     const appId = msg.appId;
@@ -12,16 +225,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       return false;
     }
 
-    if (steamGameCache.has(appId)) {
-      sendResponse(steamGameCache.get(appId));
-      return false;
-    }
-
-    fetchSteamFullInfo(appId)
-      .then((result) => {
-        steamGameCache.set(appId, result);
-        sendResponse(result);
-      })
+    getSteamFullInfoWithCache(appId)
+      .then((result) => sendResponse(result))
       .catch((err) => {
         console.warn("[Background] Steam API Error:", err);
         sendResponse({ error: err.message, french: { interface: false, audio: false, subtitles: false, status: "unknown" } });
@@ -37,6 +242,27 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         console.warn("[Background] Steam Search Error:", err);
         sendResponse(null);
       });
+    return true;
+  }
+
+  if (msg.type === "GET_CACHE_STATS") {
+    getCacheStats().then((res) => sendResponse(res));
+    return true;
+  }
+
+  if (msg.type === "CLEAR_ALL_CACHE") {
+    clearAllCache().then((res) => sendResponse(res));
+    return true;
+  }
+
+  if (msg.type === "UPDATE_CACHE_CONFIG") {
+    const payload = {};
+    if (typeof msg.maxMb === "number") payload.cacheMaxMb = msg.maxMb;
+    if (typeof msg.ttlDays === "number") payload.cacheTtlDays = msg.ttlDays;
+    chrome.storage.local.set(payload, async () => {
+      const stats = await getCacheStats();
+      sendResponse(stats);
+    });
     return true;
   }
 
@@ -60,6 +286,28 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   }
 });
+
+async function getSteamFullInfoWithCache(appId) {
+  if (steamGameCache.has(appId)) {
+    return steamGameCache.get(appId);
+  }
+
+  const cacheKey = `lgsp_g_${appId}`;
+  const persistentData = await getStorageCache(cacheKey);
+  if (persistentData && persistentData.success) {
+    steamGameCache.set(appId, persistentData);
+    return persistentData;
+  }
+
+  const result = await fetchSteamFullInfo(appId);
+  if (result) {
+    steamGameCache.set(appId, result);
+    if (result.success) {
+      await setStorageCache(cacheKey, result);
+    }
+  }
+  return result;
+}
 
 function cleanGameTitle(rawTitle) {
   if (!rawTitle) return "";
@@ -88,6 +336,13 @@ async function searchSteamGame(rawTitle) {
     return steamSearchCache.get(cleaned);
   }
 
+  const cacheKey = `lgsp_s_${hashString(cleaned.toLowerCase())}`;
+  const persistentData = await getStorageCache(cacheKey);
+  if (persistentData !== null && persistentData !== undefined) {
+    steamSearchCache.set(cleaned, persistentData);
+    return persistentData;
+  }
+
   const candidates = [cleaned];
   const words = cleaned.split(" ").filter(Boolean);
   if (words.length > 3) {
@@ -112,6 +367,7 @@ async function searchSteamGame(rawTitle) {
             matchedQuery: query,
           };
           steamSearchCache.set(cleaned, result);
+          await setStorageCache(cacheKey, result, TTL_STEAM_SEARCH_FOUND);
           return result;
         }
       }
@@ -130,6 +386,7 @@ async function searchSteamGame(rawTitle) {
             matchedQuery: query,
           };
           steamSearchCache.set(cleaned, result);
+          await setStorageCache(cacheKey, result, TTL_STEAM_SEARCH_FOUND);
           return result;
         }
       }
@@ -137,6 +394,7 @@ async function searchSteamGame(rawTitle) {
   }
 
   steamSearchCache.set(cleaned, null);
+  await setStorageCache(cacheKey, null, TTL_STEAM_SEARCH_NOT_FOUND);
   return null;
 }
 

@@ -369,6 +369,113 @@ button:hover {
     transform: scale(0.98);
 }
 
+/* SECTION GESTION DU CACHE */
+.cache-section {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.cache-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.cache-section h2 {
+    font-size: 13px;
+    margin: 0;
+    color: #00d9ff;
+}
+
+.cache-usage-badge {
+    font-size: 10px;
+    font-weight: 700;
+    color: #4ade80;
+    background: rgba(74, 222, 128, 0.12);
+    border: 1px solid rgba(74, 222, 128, 0.25);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: "SFMono-Regular", Consolas, monospace;
+}
+
+.cache-help {
+    font-size: 11px;
+    color: #8a8aa0;
+    margin: 0 0 12px;
+    line-height: 1.35;
+}
+
+.cache-stats-card {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    background: #23233f;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    padding: 8px 10px;
+}
+
+.cache-stat-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.cache-stat-label {
+    font-size: 10px;
+    color: #8a8aa0;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.cache-stat-value {
+    font-size: 13px;
+    color: #00d9ff;
+    font-family: "SFMono-Regular", Consolas, monospace;
+}
+
+.field-hint {
+    display: block;
+    font-size: 10px;
+    color: #8a8aa0;
+    margin-top: 3px;
+    line-height: 1.25;
+}
+
+.clear-cache-btn {
+    width: 100%;
+    margin-top: 10px;
+    padding: 8px 10px;
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.clear-cache-btn:hover {
+    background: #ef4444;
+    color: #ffffff;
+    border-color: #ef4444;
+}
+
+.cache-status-msg {
+    margin-top: 6px;
+    font-size: 11px;
+    padding: 6px;
+    border-radius: 5px;
+    text-align: center;
+    background: rgba(74, 222, 128, 0.15);
+    color: #4ade80;
+    border: 1px solid rgba(74, 222, 128, 0.3);
+}
+
 /* Footer avec numéro de version */
 .popup-footer {
     margin-top: 16px;

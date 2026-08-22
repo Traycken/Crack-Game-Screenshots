@@ -299,16 +299,16 @@
   function adjustSkidrowElements() {
     if (config.layout !== "sidebar-flex") return;
 
-    const nav = document.querySelector("#nav");
-    if (nav) {
+    const main = document.querySelector(config.mainSelector || "#main-content");
+    if (main) {
       let search = document.querySelector("#search-1");
       if (!search) {
         search = document.createElement("div");
         search.id = "search-1";
-        search.className = "widget";
-        nav.insertAdjacentElement("afterend", search);
-      } else if (nav.nextElementSibling !== search) {
-        nav.insertAdjacentElement("afterend", search);
+        search.className = "widget lgsp-search-widget";
+      }
+      if (main.firstElementChild !== search) {
+        main.insertBefore(search, main.firstElementChild);
       }
 
       let form = search.querySelector("form");
@@ -437,10 +437,28 @@
     const main = document.querySelector(config.mainSelector);
     if (!wrap || !main) return;
 
+    const headerWrap = document.querySelector("#header-wrap");
+    if (headerWrap) {
+      headerWrap.style.setProperty("height", "auto", "important");
+      headerWrap.style.setProperty("min-height", "0", "important");
+      headerWrap.style.setProperty("max-height", "none", "important");
+      headerWrap.style.setProperty("overflow", "visible", "important");
+    }
+
+    const header = document.querySelector("#header");
+    if (header) {
+      header.style.setProperty("height", "auto", "important");
+      header.style.setProperty("min-height", "0", "important");
+      header.style.setProperty("max-height", "none", "important");
+      header.style.setProperty("overflow", "visible", "important");
+    }
+
     wrap.style.setProperty("max-width", widthValue, "important");
     wrap.style.setProperty("width", "100%", "important");
     wrap.style.setProperty("margin-left", "auto", "important");
     wrap.style.setProperty("margin-right", "auto", "important");
+    wrap.style.setProperty("margin-top", "24px", "important");
+    wrap.style.setProperty("clear", "both", "important");
     wrap.style.setProperty("display", "block", "important");
     wrap.style.setProperty("box-sizing", "border-box", "important");
 
@@ -450,18 +468,35 @@
     main.style.setProperty("box-sizing", "border-box", "important");
   }
 
-  chrome.storage.local.get(defaultsWithPrefix(), (settings) =>
-    applySettings(normalizeSettings(settings))
-  );
+  function isExtensionValid() {
+    try {
+      return typeof chrome !== "undefined" && Boolean(chrome?.runtime?.id);
+    } catch {
+      return false;
+    }
+  }
 
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area !== "local") return;
-    const relevant = Object.keys(changes).some((key) => key.startsWith(STORAGE_PREFIX));
-    if (!relevant) return;
-    chrome.storage.local.get(defaultsWithPrefix(), (settings) =>
-      applySettings(normalizeSettings(settings))
-    );
-  });
+  if (isExtensionValid()) {
+    try {
+      chrome.storage.local.get(defaultsWithPrefix(), (settings) => {
+        if (!isExtensionValid() || chrome.runtime?.lastError || !settings) return;
+        applySettings(normalizeSettings(settings));
+      });
+
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area !== "local") return;
+        const relevant = Object.keys(changes).some((key) => key.startsWith(STORAGE_PREFIX));
+        if (!relevant) return;
+        if (!isExtensionValid()) return;
+        try {
+          chrome.storage.local.get(defaultsWithPrefix(), (settings) => {
+            if (!isExtensionValid() || chrome.runtime?.lastError || !settings) return;
+            applySettings(normalizeSettings(settings));
+          });
+        } catch {}
+      });
+    } catch {}
+  }
 
   let resizeTimer = null;
   window.addEventListener("resize", () => {
@@ -471,6 +506,88 @@
   });
 
   const detailCache = new Map();
+
+  function hashString(str) {
+    let hash = 5381;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) + hash) + str.charCodeAt(i);
+      hash = hash & hash;
+    }
+    return (hash >>> 0).toString(36);
+  }
+
+  async function getCachedPageDetail(link) {
+    if (detailCache.has(link)) {
+      return detailCache.get(link);
+    }
+    if (isExtensionValid()) {
+      try {
+        const cacheKey = `lgsp_p_${hashString(link)}`;
+        const res = await new Promise((resolve) => {
+          chrome.storage.local.get([cacheKey, "cacheTtlDays"], (data) => resolve(data));
+        });
+        const item = res ? res[cacheKey] : null;
+        if (!item) return null;
+
+        const ttlDays = Number(res.cacheTtlDays) || 7;
+        const ttlMs = ttlDays * 24 * 60 * 60 * 1000;
+        const now = Date.now();
+
+        const isExpired = (item.expiresAt && item.expiresAt < now) ||
+                          (item.createdAt && (now - item.createdAt > ttlMs));
+
+        if (isExpired) {
+          chrome.storage.local.remove([cacheKey]);
+          return null;
+        }
+
+        if (item.data) {
+          detailCache.set(link, item.data);
+          item.lastAccessedAt = now;
+          item.hitCount = (item.hitCount || 0) + 1;
+          chrome.storage.local.set({ [cacheKey]: item }).catch(() => {});
+          return item.data;
+        }
+      } catch (e) {}
+    }
+    return null;
+  }
+
+  async function setCachedPageDetail(link, data) {
+    detailCache.set(link, data);
+    if (isExtensionValid()) {
+      try {
+        const cacheKey = `lgsp_p_${hashString(link)}`;
+        const configRes = await new Promise((resolve) => {
+          chrome.storage.local.get(["cacheTtlDays"], (res) => resolve(res));
+        });
+        const ttlDays = Number(configRes?.cacheTtlDays) || 7;
+        const ttlMs = ttlDays * 24 * 60 * 60 * 1000;
+        const now = Date.now();
+
+        const entry = {
+          data,
+          createdAt: now,
+          lastAccessedAt: now,
+          hitCount: 1,
+          expiresAt: now + ttlMs,
+          sizeBytes: JSON.stringify(data).length * 2,
+        };
+
+        chrome.storage.local.set({ [cacheKey]: entry });
+      } catch (e) {}
+    }
+  }
+
+  if (isExtensionValid() && chrome?.runtime?.onMessage) {
+    try {
+      chrome.runtime.onMessage.addListener((msg) => {
+        if (msg.type === "CACHE_CLEARED") {
+          detailCache.clear();
+        }
+      });
+    } catch (e) {}
+  }
 
   function findCardLink(card) {
     const titleLink = card.querySelector(titleSel);
@@ -839,33 +956,47 @@
 
   function requestSteamGameInfo(appId) {
     return new Promise((resolve) => {
-      chrome.runtime.sendMessage(
-        { type: "STEAM_GAME_INFO", appId },
-        (response) => {
-          if (chrome.runtime.lastError) {
-            console.warn("[Game Sites Screenshots] Steam info error:",
-              chrome.runtime.lastError.message);
-            resolve(null);
-            return;
+      if (!isExtensionValid()) {
+        resolve(null);
+        return;
+      }
+      try {
+        chrome.runtime.sendMessage(
+          { type: "STEAM_GAME_INFO", appId },
+          (response) => {
+            if (!isExtensionValid() || chrome.runtime?.lastError) {
+              resolve(null);
+              return;
+            }
+            resolve(response || null);
           }
-          resolve(response || null);
-        }
-      );
+        );
+      } catch {
+        resolve(null);
+      }
     });
   }
 
   function searchSteamGame(title) {
     return new Promise((resolve) => {
-      chrome.runtime.sendMessage(
-        { type: "SEARCH_STEAM_GAME", title },
-        (response) => {
-          if (chrome.runtime.lastError) {
-            resolve(null);
-            return;
+      if (!isExtensionValid()) {
+        resolve(null);
+        return;
+      }
+      try {
+        chrome.runtime.sendMessage(
+          { type: "SEARCH_STEAM_GAME", title },
+          (response) => {
+            if (!isExtensionValid() || chrome.runtime?.lastError) {
+              resolve(null);
+              return;
+            }
+            resolve(response || null);
           }
-          resolve(response || null);
-        }
-      );
+        );
+      } catch {
+        resolve(null);
+      }
     });
   }
 
@@ -921,15 +1052,19 @@
   }
 
   function loadUserSteamData() {
-    chrome.storage.local.get(["steamWishlist", "steamOwned"], (res) => {
-      if (Array.isArray(res.steamWishlist)) {
-        userSteamWishlist = new Set(res.steamWishlist.map(String));
-      }
-      if (Array.isArray(res.steamOwned)) {
-        userSteamOwned = new Set(res.steamOwned.map(String));
-      }
-      updateAllSteamBadges();
-    });
+    if (!isExtensionValid()) return;
+    try {
+      chrome.storage.local.get(["steamWishlist", "steamOwned"], (res) => {
+        if (!isExtensionValid() || chrome.runtime?.lastError || !res) return;
+        if (Array.isArray(res.steamWishlist)) {
+          userSteamWishlist = new Set(res.steamWishlist.map(String));
+        }
+        if (Array.isArray(res.steamOwned)) {
+          userSteamOwned = new Set(res.steamOwned.map(String));
+        }
+        updateAllSteamBadges();
+      });
+    } catch {}
   }
   loadUserSteamData();
 
@@ -937,26 +1072,32 @@
   let userFavoriteHosts = new Set();
 
   function loadFavoriteHosts() {
-    chrome.storage.local.get(["favoriteHosts"], (res) => {
-      if (Array.isArray(res.favoriteHosts)) {
-        userFavoriteHosts = new Set(res.favoriteHosts.map((h) => String(h).toUpperCase().trim()));
-      }
-      updateAllDownloadsDropdowns();
-    });
+    if (!isExtensionValid()) return;
+    try {
+      chrome.storage.local.get(["favoriteHosts"], (res) => {
+        if (!isExtensionValid() || chrome.runtime?.lastError || !res) return;
+        if (Array.isArray(res.favoriteHosts)) {
+          userFavoriteHosts = new Set(res.favoriteHosts.map((h) => String(h).toUpperCase().trim()));
+        }
+        updateAllDownloadsDropdowns();
+      });
+    } catch {}
   }
   loadFavoriteHosts();
 
   function toggleFavoriteHost(hostName) {
-    if (!hostName) return;
+    if (!hostName || !isExtensionValid()) return;
     const cleanHost = String(hostName).toUpperCase().trim();
     if (userFavoriteHosts.has(cleanHost)) {
       userFavoriteHosts.delete(cleanHost);
     } else {
       userFavoriteHosts.add(cleanHost);
     }
-    chrome.storage.local.set({ favoriteHosts: Array.from(userFavoriteHosts) }, () => {
-      updateAllDownloadsDropdowns();
-    });
+    try {
+      chrome.storage.local.set({ favoriteHosts: Array.from(userFavoriteHosts) }, () => {
+        updateAllDownloadsDropdowns();
+      });
+    } catch {}
   }
 
   function updateAllDownloadsDropdowns() {
@@ -967,16 +1108,21 @@
     });
   }
 
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === "local") {
-      if (changes.steamWishlist || changes.steamOwned) {
-        loadUserSteamData();
-      }
-      if (changes.favoriteHosts) {
-        loadFavoriteHosts();
-      }
-    }
-  });
+  if (isExtensionValid()) {
+    try {
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === "local") {
+          if (!isExtensionValid()) return;
+          if (changes.steamWishlist || changes.steamOwned) {
+            loadUserSteamData();
+          }
+          if (changes.favoriteHosts) {
+            loadFavoriteHosts();
+          }
+        }
+      });
+    } catch {}
+  }
 
   // --- Détection Automatique du Matériel & Comparateur de Compatibilité -------
 
@@ -2104,6 +2250,88 @@
     return wrap;
   }
 
+  // --- Gestionnaire de RAM / Virtualisation des captures au scroll ---
+  const BLANK_IMAGE_SVG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 9'%3E%3C/svg%3E";
+
+  let mediaVirtualizerObserver = null;
+
+  function initMediaVirtualizer() {
+    if (mediaVirtualizerObserver) return mediaVirtualizerObserver;
+
+    try {
+      mediaVirtualizerObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            const card = entry.target;
+            if (entry.isIntersecting) {
+              // Réhydrater les images quand la carte approche du viewport
+              rehydrateCardMedia(card);
+            } else {
+              // Décharger les images lourdes si la carte est loin au-dessus ou en-dessous
+              const rect = entry.boundingClientRect;
+              if (rect.bottom < -800 || rect.top > window.innerHeight + 800) {
+                unloadCardMedia(card);
+              }
+            }
+          });
+        },
+        {
+          // Marge généreuse de 1000px : recharge instantanément AVANT que l'utilisateur n'arrive dessus
+          rootMargin: "1000px 0px 1000px 0px",
+          threshold: 0,
+        }
+      );
+    } catch (e) {
+      console.warn("[LGSP] IntersectionObserver error:", e);
+    }
+
+    return mediaVirtualizerObserver;
+  }
+
+  function registerCardForVirtualization(card) {
+    const observer = initMediaVirtualizer();
+    if (observer && card) {
+      observer.observe(card);
+    }
+  }
+
+  function unloadCardMedia(card) {
+    if (!card || card._lgspMediaUnloaded) return;
+    card._lgspMediaUnloaded = true;
+
+    const images = card.querySelectorAll(".lgsp-gallery-item img");
+    images.forEach((img) => {
+      const currentSrc = img.getAttribute("src");
+      if (currentSrc && !currentSrc.startsWith("data:image/svg")) {
+        img.dataset.lgspSrc = currentSrc;
+        img.src = BLANK_IMAGE_SVG;
+        img.classList.add("lgsp-virtualized");
+      }
+    });
+
+    // Libérer la mémoire des vidéos/iframes actives
+    const playingItems = card.querySelectorAll(".lgsp-playing-inline");
+    playingItems.forEach((itemWrap) => {
+      itemWrap.classList.remove("lgsp-playing-inline");
+      const embed = itemWrap.querySelector("iframe, video");
+      if (embed) embed.remove();
+    });
+  }
+
+  function rehydrateCardMedia(card) {
+    if (!card || !card._lgspMediaUnloaded) return;
+    card._lgspMediaUnloaded = false;
+
+    const images = card.querySelectorAll(".lgsp-gallery-item img");
+    images.forEach((img) => {
+      const originalSrc = img.dataset.lgspSrc;
+      if (originalSrc && img.getAttribute("src") !== originalSrc) {
+        img.src = originalSrc;
+        img.classList.remove("lgsp-virtualized");
+      }
+    });
+  }
+
   // --- Rendu de la galerie multimédia (Jaquette + Vidéos + Screenshots) -------
 
   function renderGallery(card, mediaItems, coverData) {
@@ -2125,6 +2353,7 @@
 
       const coverImg = document.createElement("img");
       coverImg.src = coverData.src;
+      coverImg.dataset.lgspSrc = coverData.src;
       coverImg.alt = coverData.alt || "Jaquette";
       coverImg.loading = "lazy";
       coverWrap.appendChild(coverImg);
@@ -2147,7 +2376,9 @@
         itemWrap.classList.remove("lgsp-playing-inline");
 
         const img = document.createElement("img");
-        img.src = item.thumbnail || item.src;
+        const imgSrc = item.thumbnail || item.src;
+        img.src = imgSrc;
+        img.dataset.lgspSrc = imgSrc;
         img.loading = "lazy";
         img.alt = item.title || "Capture";
         itemWrap.appendChild(img);
@@ -2453,10 +2684,69 @@
     });
 
     card.appendChild(container);
+    registerCardForVirtualization(card);
 
     requestAnimationFrame(() => {
       updateArrows();
     });
+  }
+
+  // --- Rendu de l'accordéon des liens de téléchargement avec flèche déroulante ---
+
+  // --- Évaluation & Scores des Hébergeurs (Sécurité / Pubs / Vitesse) ---
+  const HOST_EVALUATIONS = {
+    gofile: { name: "GoFile", safety: 10.0, speed: 10.0, tier: "S", desc: "Top DDL : Vitesse max illimitée, 1 clic, aucune pub" },
+    pixeldrain: { name: "Pixeldrain", safety: 9.5, speed: 9.5, tier: "S", desc: "Ultra rapide, direct et très propre" },
+    buzz: { name: "Buzzheavier", safety: 9.0, speed: 9.5, tier: "S", desc: "Très haut débit, direct, sans pub agressive" },
+    buzzheavier: { name: "Buzzheavier", safety: 9.0, speed: 9.5, tier: "S", desc: "Très haut débit, direct, sans pub agressive" },
+    mediafire: { name: "MediaFire", safety: 9.5, speed: 8.5, tier: "S", desc: "Très propre et fiable, débit rapide" },
+    mega: { name: "Mega", safety: 9.0, speed: 8.5, tier: "A", desc: "Rapide et sécurisé (quota de 5 Go/IP)" },
+    "1fichier": { name: "1Fichier", safety: 8.0, speed: 9.0, tier: "A", desc: "Vitesse max fibre (attente entre 2 fichiers gratuits)" },
+    torrent: { name: "Torrent", safety: 8.5, speed: 8.5, tier: "A", desc: "P2P direct sans pub (dépend des seeders)" },
+    datanodes: { name: "Datanodes", safety: 7.5, speed: 8.0, tier: "B", desc: "Bon débit, navigation simple" },
+    rootz: { name: "Rootz", safety: 7.5, speed: 8.0, tier: "B", desc: "Bon débit, simple d'accès" },
+    multi: { name: "Multi Links", safety: 8.0, speed: 7.5, tier: "B", desc: "Multi-hébergeurs (permet de choisir son miroir)" },
+    multiup: { name: "MultiUp", safety: 8.0, speed: 7.5, tier: "B", desc: "Multi-hébergeurs (permet de choisir son miroir)" },
+    megaup: { name: "MegaUp", safety: 6.5, speed: 7.5, tier: "B", desc: "Bon débit mais compte à rebours 5s et popups" },
+    send: { name: "SendCM", safety: 7.0, speed: 7.0, tier: "B", desc: "Vitesse correcte, quelques redirections" },
+    sendcm: { name: "SendCM", safety: 7.0, speed: 7.0, tier: "B", desc: "Vitesse correcte, quelques redirections" },
+    bowfile: { name: "Bowfile", safety: 6.5, speed: 6.5, tier: "C", desc: "Débit moyen, pubs modérées" },
+    mirage: { name: "FileMirage", safety: 6.0, speed: 6.5, tier: "C", desc: "Pages intermédiaires, débit moyen" },
+    filemirage: { name: "FileMirage", safety: 6.0, speed: 6.5, tier: "C", desc: "Pages intermédiaires, débit moyen" },
+    "1cloudfile": { name: "1CloudFile", safety: 5.5, speed: 6.0, tier: "C", desc: "Débit moyen, publicités" },
+    freedlink: { name: "Freedlink", safety: 5.0, speed: 5.0, tier: "C", desc: "Débit limité, publicités" },
+    frdl: { name: "Freedlink", safety: 5.0, speed: 5.0, tier: "C", desc: "Débit limité, publicités" },
+    vikingfile: { name: "VikingFile", safety: 5.0, speed: 5.0, tier: "C", desc: "Débit modéré" },
+    wdho: { name: "WDHO", safety: 4.5, speed: 4.5, tier: "D", desc: "Site avec compteurs et débit variable" },
+    wdfiles: { name: "WDHO", safety: 4.5, speed: 4.5, tier: "D", desc: "Site avec compteurs et débit variable" },
+    hexload: { name: "Hexload", safety: 4.0, speed: 4.5, tier: "D", desc: "Nombreuses pubs et débit limité" },
+    usersdrive: { name: "Usersdrive", safety: 3.5, speed: 4.0, tier: "D", desc: "Faux boutons et captchas" },
+    clicknupload: { name: "Clicknupload", safety: 3.0, speed: 4.0, tier: "D", desc: "Redirections agressives et popups" },
+    dailyupload: { name: "DailyUploads", safety: 3.0, speed: 3.5, tier: "D", desc: "Publicités trompeuses et redirections" },
+    mixdrop: { name: "Mixdrop", safety: 3.0, speed: 3.0, tier: "D", desc: "Lent et popups fréquents" },
+    downmediaload: { name: "DownMediaLoad", safety: 2.5, speed: 3.0, tier: "D", desc: "Redirections multiples et captchas invasifs" },
+    chomikuj: { name: "Chomikuj", safety: 2.0, speed: 2.0, tier: "D", desc: "Payant au Mo ou débit bloqué" },
+    rapidgator: { name: "Rapidgator", safety: 3.0, speed: 1.5, tier: "D", desc: "Vitesse très bridée (50 Ko/s en gratuit)" },
+    nitroflare: { name: "Nitroflare", safety: 3.0, speed: 1.5, tier: "D", desc: "Vitesse très bridée sans abonnement" },
+    ddownload: { name: "DDownload", safety: 3.0, speed: 1.5, tier: "D", desc: "Vitesse très bridée en gratuit" },
+  };
+
+  function getHostEvaluation(hostName, urlStr) {
+    const raw = `${hostName || ""} ${urlStr || ""}`.toLowerCase();
+    for (const [key, val] of Object.entries(HOST_EVALUATIONS)) {
+      if (raw.includes(key)) {
+        const score = (val.safety * 0.5) + (val.speed * 0.5);
+        return { ...val, score };
+      }
+    }
+    return {
+      name: hostName || "Hébergeur",
+      safety: 5.0,
+      speed: 5.0,
+      score: 5.0,
+      tier: "C",
+      desc: "Hébergeur standard",
+    };
   }
 
   // --- Rendu de l'accordéon des liens de téléchargement avec flèche déroulante ---
@@ -2473,15 +2763,26 @@
 
     const isFav = (h) => userFavoriteHosts.has(String(h || "").toUpperCase().trim());
 
-    // Tri prioritaire : Favoris en 1er, puis liens actifs, puis liens en cours d'upload
+    // Tri intelligent :
+    // 1. Favoris utilisateur (⭐) en premier
+    // 2. Liens disponibles avant les liens en cours d'upload
+    // 3. Score combiné de qualité (Sécurité 50% + Vitesse gratuit 50%) du meilleur au moins bon
     const sortedLinks = [...downloadLinks].sort((a, b) => {
       const favA = isFav(a.host);
       const favB = isFav(b.host);
       if (favA && !favB) return -1;
       if (!favA && favB) return 1;
+
       if (!a.isUploading && b.isUploading) return -1;
       if (a.isUploading && !b.isUploading) return 1;
-      return 0;
+
+      const evalA = getHostEvaluation(a.host, a.url);
+      const evalB = getHostEvaluation(b.host, b.url);
+
+      if (evalA.score !== evalB.score) {
+        return evalB.score - evalA.score;
+      }
+      return String(a.host).localeCompare(String(b.host));
     });
 
     const availableLinks = sortedLinks.filter((l) => !l.isUploading);
@@ -2537,6 +2838,7 @@
     sortedLinks.forEach((dl) => {
       const themeClass = getHostTheme(dl.host);
       const isFavorite = isFav(dl.host);
+      const evalData = getHostEvaluation(dl.host, dl.url);
 
       const favBtn = document.createElement("button");
       favBtn.type = "button";
@@ -2548,6 +2850,9 @@
         e.stopPropagation();
         toggleFavoriteHost(dl.host);
       });
+      favBtn.addEventListener("mousedown", (e) => {
+        e.stopPropagation();
+      });
 
       if (!dl.isUploading && dl.url) {
         const item = document.createElement("a");
@@ -2555,9 +2860,7 @@
         item.href = dl.url;
         item.target = "_blank";
         item.rel = "noopener noreferrer";
-
-        const header = document.createElement("div");
-        header.className = "lgsp-dl-card-header";
+        item.title = `Télécharger via ${dl.host}\n⭐ Note : ${evalData.score.toFixed(1)}/10 (Tier ${evalData.tier})\n🛡️ Sécurité & Propreté : ${evalData.safety}/10\n⚡ Vitesse Gratuit : ${evalData.speed}/10\n💡 ${evalData.desc}${dl.filename ? `\n\n📁 Fichier : ${dl.filename}` : ""}`;
 
         const hostGroup = document.createElement("div");
         hostGroup.className = "lgsp-dl-host-group";
@@ -2568,30 +2871,29 @@
         hostPill.textContent = dl.host;
         hostGroup.appendChild(hostPill);
 
-        const actionPill = document.createElement("span");
-        actionPill.className = "lgsp-dl-action-pill";
-        actionPill.innerHTML = `<span>Télécharger</span><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`;
+        const rightGroup = document.createElement("div");
+        rightGroup.className = "lgsp-dl-right-group";
 
-        header.appendChild(hostGroup);
-        header.appendChild(actionPill);
-        item.appendChild(header);
+        const scoreBadge = document.createElement("span");
+        scoreBadge.className = `lgsp-dl-score-badge lgsp-tier-${evalData.tier.toLowerCase()}`;
+        scoreBadge.textContent = evalData.score.toFixed(1);
 
-        if (dl.filename) {
-          const fn = document.createElement("div");
-          fn.className = "lgsp-dl-filename";
-          fn.title = dl.filename;
-          fn.textContent = dl.filename;
-          item.appendChild(fn);
-        }
+        const dlIcon = document.createElement("span");
+        dlIcon.className = "lgsp-dl-download-icon";
+        dlIcon.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
+
+        rightGroup.appendChild(scoreBadge);
+        rightGroup.appendChild(dlIcon);
+
+        item.appendChild(hostGroup);
+        item.appendChild(rightGroup);
 
         item.addEventListener("click", (e) => e.stopPropagation());
         grid.appendChild(item);
       } else {
         const item = document.createElement("div");
         item.className = `lgsp-dl-card lgsp-dl-card-disabled ${themeClass} ${isFavorite ? "lgsp-dl-card-fav" : ""}`;
-
-        const header = document.createElement("div");
-        header.className = "lgsp-dl-card-header";
+        item.title = `En cours d'upload sur ${dl.host}${dl.filename ? `\nFichier: ${dl.filename}` : ""}`;
 
         const hostGroup = document.createElement("div");
         hostGroup.className = "lgsp-dl-host-group";
@@ -2604,19 +2906,10 @@
 
         const statusEl = document.createElement("span");
         statusEl.className = "lgsp-dl-status-uploading";
-        statusEl.textContent = "⏳ Upload en cours...";
+        statusEl.textContent = "⏳ Upload...";
 
-        header.appendChild(hostGroup);
-        header.appendChild(statusEl);
-        item.appendChild(header);
-
-        if (dl.filename) {
-          const fn = document.createElement("div");
-          fn.className = "lgsp-dl-filename";
-          fn.title = dl.filename;
-          fn.textContent = dl.filename;
-          item.appendChild(fn);
-        }
+        item.appendChild(hostGroup);
+        item.appendChild(statusEl);
 
         grid.appendChild(item);
       }
@@ -2656,7 +2949,7 @@
       // Récupération de la jaquette mémorisée lors du nettoyage de la carte
       let coverData = card._lgspCoverData || null;
 
-      let cached = detailCache.get(link);
+      let cached = await getCachedPageDetail(link);
       let pageScreenshots = [];
       let pageVideos = [];
       let steamInfo = null;
@@ -2664,11 +2957,14 @@
       let pageGameSize = null;
 
       if (cached) {
-        pageScreenshots = cached.pageScreenshots;
-        pageVideos = cached.pageVideos;
-        steamInfo = cached.steamInfo;
+        pageScreenshots = cached.pageScreenshots || [];
+        pageVideos = cached.pageVideos || [];
+        steamInfo = cached.steamInfo || null;
         downloadLinks = cached.downloadLinks || [];
         pageGameSize = cached.pageGameSize || null;
+        if (cached.coverData && !coverData) {
+          coverData = cached.coverData;
+        }
       } else {
         const res = await fetch(link, { credentials: "include" });
         const html = await res.text();
@@ -2695,7 +2991,7 @@
         downloadLinks = pageDlData.downloadLinks;
         pageGameSize = pageDlData.pageGameSize;
 
-        detailCache.set(link, { pageScreenshots, pageVideos, steamInfo, downloadLinks, pageGameSize });
+        await setCachedPageDetail(link, { pageScreenshots, pageVideos, steamInfo, downloadLinks, pageGameSize, coverData });
       }
 
       if (pageGameSize) {
@@ -2806,13 +3102,68 @@
     { rootMargin: "200px" }
   );
 
+  function formatHeaderPost(card) {
+    card.setAttribute(PROCESSED_ATTR, "1");
+    card.classList.remove("lgsp-card");
+    card.classList.add("lgsp-header-banner");
+
+    card.style.setProperty("display", "block", "important");
+    card.style.setProperty("width", "100%", "important");
+    card.style.setProperty("max-width", "none", "important");
+    card.style.setProperty("float", "none", "important");
+    card.style.setProperty("margin-top", "0", "important");
+    card.style.setProperty("margin-bottom", "8px", "important");
+    card.style.setProperty("height", "auto", "important");
+    card.style.setProperty("min-height", "0", "important");
+    card.style.setProperty("max-height", "none", "important");
+    card.style.setProperty("overflow", "visible", "important");
+
+    const h2 = card.querySelector("h2");
+    if (h2) {
+      h2.style.setProperty("height", "auto", "important");
+      h2.style.setProperty("min-height", "0", "important");
+      h2.style.setProperty("max-height", "none", "important");
+      h2.style.setProperty("overflow", "visible", "important");
+      h2.style.setProperty("line-height", "1.4", "important");
+      h2.style.setProperty("color", "var(--lgsp-sr-text, #e7e8ec)", "important");
+      h2.style.setProperty("margin", "0", "important");
+      h2.style.setProperty("padding", "0", "important");
+
+      const txt = (h2.textContent || "").trim();
+      const searchMatch = txt.match(/^(\d+)\s+search\s+results?\s+for\s+["“](.+)["”]/i);
+      if (searchMatch) {
+        const count = searchMatch[1];
+        const query = searchMatch[2];
+        h2.innerHTML = `
+          <span class="lgsp-search-badge">🔍 ${count} résultat${Number(count) > 1 ? "s" : ""}</span>
+          <span>Recherche pour <strong>« ${query} »</strong></span>
+        `;
+      }
+    }
+  }
+
   function enforceSingleColumnLayout(card) {
     card.style.setProperty("display", "block", "important");
     card.style.setProperty("width", "100%", "important");
     card.style.setProperty("max-width", "none", "important");
     card.style.setProperty("float", "none", "important");
-    card.style.setProperty("margin-bottom", "24px", "important");
+    card.style.setProperty("margin-top", "0", "important");
+    card.style.setProperty("margin-bottom", "8px", "important");
+    card.style.setProperty("height", "auto", "important");
+    card.style.setProperty("min-height", "0", "important");
+    card.style.setProperty("max-height", "none", "important");
+    card.style.setProperty("overflow", "visible", "important");
     card.classList.add("lgsp-card");
+
+    const h2 = card.querySelector("h2");
+    if (h2) {
+      h2.style.setProperty("height", "auto", "important");
+      h2.style.setProperty("min-height", "0", "important");
+      h2.style.setProperty("max-height", "none", "important");
+      h2.style.setProperty("overflow", "visible", "important");
+      h2.style.setProperty("line-height", "1.35", "important");
+      h2.style.setProperty("color", "var(--lgsp-sr-text, #e7e8ec)", "important");
+    }
   }
 
   // --- Nettoyage spécifique SkidrowReloaded (Réduction verticale & Jaquette) ---
@@ -2879,6 +3230,11 @@
         card.setAttribute("data-lgsp-page", `${currentPageNum}`);
       }
       if (!card.hasAttribute(PROCESSED_ATTR)) {
+        const titleLink = card.querySelector(titleSel);
+        if (!titleLink) {
+          formatHeaderPost(card);
+          return;
+        }
         enforceSingleColumnLayout(card);
         if (config.enhanceCard) enhanceCard(card);
         observer.observe(card);
@@ -3460,10 +3816,13 @@
   function init() {
     if (lastSettings) {
       applySettings(lastSettings);
-    } else {
-      chrome.storage.local.get(defaultsWithPrefix(), (settings) =>
-        applySettings(normalizeSettings(settings))
-      );
+    } else if (isExtensionValid()) {
+      try {
+        chrome.storage.local.get(defaultsWithPrefix(), (settings) => {
+          if (!isExtensionValid() || chrome.runtime?.lastError || !settings) return;
+          applySettings(normalizeSettings(settings));
+        });
+      } catch {}
     }
 
     scanForCards();
@@ -3500,14 +3859,6 @@
         subtree: true,
       });
     }
-
-    // Écoute en direct des changements de réglages depuis la popup
-    chrome.storage.onChanged.addListener((changes, area) => {
-      if (area !== "local") return;
-      chrome.storage.local.get(defaultsWithPrefix(), (settings) => {
-        applySettings(normalizeSettings(settings));
-      });
-    });
 
     // Lever l'écran de chargement dès que la structure initiale est prête
     requestAnimationFrame(() => {

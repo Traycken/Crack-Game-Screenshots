@@ -337,6 +337,78 @@ function initVersionChecker() {
   check(false);
 }
 
+function initCacheManager() {
+  const countStat = document.getElementById("cacheCountStat");
+  const sizeStat = document.getElementById("cacheSizeStat");
+  const usageBadge = document.getElementById("cacheUsageBadge");
+  const maxMbInput = document.getElementById("cacheMaxMb");
+  const maxMbValue = document.getElementById("cacheMaxMbValue");
+  const ttlDaysInput = document.getElementById("cacheTtlDays");
+  const ttlDaysValue = document.getElementById("cacheTtlDaysValue");
+  const clearBtn = document.getElementById("clearCacheBtn");
+  const statusMsg = document.getElementById("cacheStatusMsg");
+
+  if (!maxMbInput || !ttlDaysInput || !clearBtn) return;
+
+  function updateUiStats(stats) {
+    if (!stats) return;
+    if (countStat) countStat.textContent = `${stats.count || 0}`;
+    if (sizeStat) sizeStat.textContent = stats.formattedSize || "0 Ko";
+    if (usageBadge) {
+      usageBadge.textContent = `${stats.formattedSize || "0 Ko"} / ${stats.maxMb || 25} Mo`;
+    }
+    if (maxMbInput) maxMbInput.value = stats.maxMb || 25;
+    if (maxMbValue) maxMbValue.textContent = `${stats.maxMb || 25} Mo`;
+    if (ttlDaysInput) ttlDaysInput.value = stats.ttlDays || 7;
+    if (ttlDaysValue) ttlDaysValue.textContent = `${stats.ttlDays || 7} j`;
+  }
+
+  function fetchStats() {
+    chrome.runtime.sendMessage({ type: "GET_CACHE_STATS" }, (res) => {
+      if (chrome.runtime.lastError) return;
+      if (res && res.success) {
+        updateUiStats(res);
+      }
+    });
+  }
+
+  // Chargement initial des stats
+  fetchStats();
+
+  maxMbInput.addEventListener("input", () => {
+    const val = Number(maxMbInput.value);
+    if (maxMbValue) maxMbValue.textContent = `${val} Mo`;
+    chrome.runtime.sendMessage({ type: "UPDATE_CACHE_CONFIG", maxMb: val }, (res) => {
+      if (res && res.success) updateUiStats(res);
+    });
+  });
+
+  ttlDaysInput.addEventListener("input", () => {
+    const val = Number(ttlDaysInput.value);
+    if (ttlDaysValue) ttlDaysValue.textContent = `${val} j`;
+    chrome.runtime.sendMessage({ type: "UPDATE_CACHE_CONFIG", ttlDays: val }, (res) => {
+      if (res && res.success) updateUiStats(res);
+    });
+  });
+
+  clearBtn.addEventListener("click", () => {
+    clearBtn.disabled = true;
+    clearBtn.textContent = "⏳ Vidage en cours...";
+    chrome.runtime.sendMessage({ type: "CLEAR_ALL_CACHE" }, (res) => {
+      clearBtn.disabled = false;
+      clearBtn.textContent = "🗑️ Vider tout le cache";
+      if (statusMsg) {
+        statusMsg.textContent = `✅ Cache vidé (${res?.count || 0} entrées supprimées)`;
+        statusMsg.hidden = false;
+        setTimeout(() => {
+          statusMsg.hidden = true;
+        }, 3000);
+      }
+      fetchStats();
+    });
+  });
+}
+
 function initNavigation() {
   const settingsBtn = document.getElementById("settingsToggleBtn");
   const viewMain = document.getElementById("viewMain");
@@ -388,6 +460,7 @@ function init() {
   initNavigation();
   renderSiteLinks(null);
   initSteamSync();
+  initCacheManager();
   initVersionChecker();
 
   if (!chrome.tabs || !chrome.tabs.query) {
