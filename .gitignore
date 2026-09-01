@@ -1,0 +1,10 @@
+# Chrome Extension & Web
+*.crx
+*.zip
+*.pem
+dist/
+node_modules/
+
+Screenshot_10.png
+Screenshot_11.png
+Screenshot_9.png
