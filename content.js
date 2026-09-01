@@ -46,8 +46,40 @@
     },
   };
 
-  const config = SITE_CONFIGS[location.hostname];
+  const CANONICAL_HOSTS = {
+    "skidrowreloaded.com": "www.skidrowreloaded.com",
+    "www.skidrowreloaded.com": "www.skidrowreloaded.com",
+    "igg-games.com": "igg-games.com",
+    "www.igg-games.com": "igg-games.com",
+    "pcgamestorrents.com": "pcgamestorrents.com",
+    "www.pcgamestorrents.com": "pcgamestorrents.com",
+  };
+
+  const canonicalHostname = CANONICAL_HOSTS[location.hostname.toLowerCase()] || location.hostname;
+  const config = SITE_CONFIGS[canonicalHostname];
   if (!config) return;
+
+  const STORAGE_PREFIX = `${canonicalHostname}:`;
+  function storageKey(field) {
+    return `${STORAGE_PREFIX}${field}`;
+  }
+
+  let isSiteDisabled = false;
+
+  function cancelAndDisableExtension() {
+    isSiteDisabled = true;
+    hidePageLoader();
+    const loader = document.getElementById("lgsp-page-loader");
+    if (loader) loader.remove();
+    if (document.documentElement) {
+      document.documentElement.classList.remove("lgsp-loading", "lgsp-ready", "lgsp-skidrow-listing", "lgsp-has-custom-bg");
+    }
+    if (document.body) {
+      document.body.classList.remove("lgsp-has-custom-bg");
+    }
+    const bgContainer = document.getElementById("lgsp-custom-bg-root");
+    if (bgContainer) bgContainer.remove();
+  }
 
   // SkidrowReloaded : activation sur les pages de liste et résultats de recherche
   if (config.layout === "sidebar-flex") {
@@ -145,7 +177,6 @@
   const titleSel = config.titleSelector;
   const imgSel = config.detailImageSelector;
 
-  const STORAGE_PREFIX = `${location.hostname}:`;
   const DEFAULTS = {
     galleryColumns: 3,
     galleryRows: 2,
@@ -157,10 +188,6 @@
   const SCREENSHOT_RATIO = 9 / 16;
   const RESIZE_DEBOUNCE_MS = 120;
 
-  function storageKey(field) {
-    return `${STORAGE_PREFIX}${field}`;
-  }
-
   function defaultsWithPrefix() {
     return {
       [storageKey("galleryColumns")]: DEFAULTS.galleryColumns,
@@ -168,6 +195,7 @@
       [storageKey("maxTotalScreenshots")]: DEFAULTS.maxTotalScreenshots,
       [storageKey("maxContentWidthPct")]: DEFAULTS.maxContentWidthPct,
       [storageKey("textScale")]: DEFAULTS.textScale,
+      [storageKey("customBg")]: null,
     };
   }
 
@@ -178,13 +206,13 @@
       maxTotalScreenshots: raw[storageKey("maxTotalScreenshots")] ?? DEFAULTS.maxTotalScreenshots,
       maxContentWidthPct: raw[storageKey("maxContentWidthPct")] ?? DEFAULTS.maxContentWidthPct,
       textScale: raw[storageKey("textScale")] ?? DEFAULTS.textScale,
+      customBg: raw[storageKey("customBg")] ?? null,
     };
   }
 
   function widthValueFor(settings) {
-    const px = Math.round(
-      (document.documentElement.clientWidth * settings.maxContentWidthPct) / 100
-    );
+    const pct = Number(settings.maxContentWidthPct) || DEFAULTS.maxContentWidthPct;
+    const px = Math.round((window.innerWidth * pct) / 100);
     return `${px}px`;
   }
 
@@ -193,8 +221,8 @@
     const ref = config.mainSelector ? document.querySelector(config.mainSelector) : null;
     const refRect = ref ? ref.getBoundingClientRect() : null;
     const refWidth = (refRect && refRect.width > 200) ? refRect.width : 0;
-    const clientWidth = document.documentElement.clientWidth || window.innerWidth || 1200;
-    const pct = s.maxContentWidthPct || DEFAULTS.maxContentWidthPct;
+    const clientWidth = window.innerWidth || 1200;
+    const pct = Number(s.maxContentWidthPct) || DEFAULTS.maxContentWidthPct;
     let totalWidth = refWidth || Math.round((clientWidth * pct) / 100);
     totalWidth -= CARD_PADDING;
     const columns = Math.max(1, s.galleryColumns || DEFAULTS.galleryColumns);
@@ -203,6 +231,145 @@
   }
 
   let lastSettings = null;
+  let currentBgHash = null;
+
+  function parseYouTubeId(urlOrId) {
+    if (!urlOrId) return null;
+    const str = urlOrId.trim();
+    if (/^[a-zA-Z0-9_-]{11}$/.test(str)) return str;
+    const match = str.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/i);
+    return match ? match[1] : null;
+  }
+
+  function computeBgHash(bg) {
+    if (!bg || !bg.type) return "none";
+    const urlSample = bg.url ? `${bg.url.length}_${bg.url.slice(0, 30)}_${bg.url.slice(-30)}` : "";
+    return `${bg.type}_${urlSample}_${bg.videoId || ""}_${(bg.htmlContent || "").length}_${bg.color || ""}_${bg.overlayOpacity ?? 40}_${bg.blur ?? 0}_${bg.glassmorphism ?? 70}`;
+  }
+
+  function ensureCustomBgContainer() {
+    let container = document.getElementById("lgsp-custom-bg-root");
+    if (!container) {
+      container = document.createElement("div");
+      container.id = "lgsp-custom-bg-root";
+    }
+    const target = document.body || document.documentElement;
+    if (target && container.parentElement !== target) {
+      target.insertBefore(container, target.firstChild);
+    }
+    return container;
+  }
+
+  function applyCustomBackground(bg) {
+    const root = document.documentElement;
+    const body = document.body;
+    const newHash = computeBgHash(bg);
+
+    if (!bg || !bg.type || (!bg.url && !bg.videoId && !bg.htmlContent && !bg.color)) {
+      if (currentBgHash === "none" && !document.getElementById("lgsp-custom-bg-root")) return;
+      currentBgHash = "none";
+      if (root) root.classList.remove("lgsp-has-custom-bg");
+      if (body) body.classList.remove("lgsp-has-custom-bg");
+      const existing = document.getElementById("lgsp-custom-bg-root");
+      if (existing) existing.remove();
+      return;
+    }
+
+    if (root) root.classList.add("lgsp-has-custom-bg");
+    if (body) body.classList.add("lgsp-has-custom-bg");
+
+    const container = ensureCustomBgContainer();
+
+    const overlayOpacity = Math.max(0, Math.min(95, Number(bg.overlayOpacity ?? 40))) / 100;
+    const blurPx = Math.max(0, Math.min(30, Number(bg.blur ?? 0)));
+    const glassPct = Math.max(0, Math.min(100, Number(bg.glassmorphism ?? 70)));
+    const glassRatio = glassPct / 100;
+
+    const glassOpacity = (0.15 + 0.73 * glassRatio).toFixed(2);
+    const glassHoverOpacity = (0.22 + 0.68 * glassRatio).toFixed(2);
+    const glassBlur = `${Math.round(glassRatio * 32)}px`;
+    const glassSaturate = `${Math.round(100 + 100 * glassRatio)}%`;
+    const glassBorderOpacity = (0.04 + 0.18 * glassRatio).toFixed(2);
+    const glassShadowOpacity = (0.10 + 0.50 * glassRatio).toFixed(2);
+
+    if (root) {
+      root.style.setProperty("--lgsp-glass-opacity", glassOpacity);
+      root.style.setProperty("--lgsp-glass-hover-opacity", glassHoverOpacity);
+      root.style.setProperty("--lgsp-glass-blur", glassBlur);
+      root.style.setProperty("--lgsp-glass-saturate", glassSaturate);
+      root.style.setProperty("--lgsp-glass-border-opacity", glassBorderOpacity);
+      root.style.setProperty("--lgsp-glass-shadow-opacity", glassShadowOpacity);
+    }
+
+    let mediaLayer = container.querySelector(".lgsp-custom-bg-media");
+    let overlayLayer = container.querySelector(".lgsp-custom-bg-overlay");
+
+    if (overlayLayer) {
+      overlayLayer.style.backgroundColor = `rgba(0, 0, 0, ${overlayOpacity})`;
+    }
+    if (mediaLayer) {
+      mediaLayer.style.filter = blurPx > 0 ? `blur(${blurPx}px)` : "none";
+    }
+
+    if (currentBgHash === newHash && container.children.length > 0) return;
+    currentBgHash = newHash;
+
+    container.innerHTML = "";
+
+    mediaLayer = document.createElement("div");
+    mediaLayer.className = "lgsp-custom-bg-media";
+    mediaLayer.style.filter = blurPx > 0 ? `blur(${blurPx}px)` : "none";
+
+    const isVideoUrl = bg.url && /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(bg.url);
+
+    if (bg.type === "image" || (bg.type === "url" && !isVideoUrl)) {
+      const img = document.createElement("img");
+      img.className = "lgsp-custom-bg-image";
+      img.src = bg.url;
+      mediaLayer.appendChild(img);
+    } else if (bg.type === "youtube" || (bg.type === "url" && (bg.url.includes("youtube.com") || bg.url.includes("youtu.be")))) {
+      const videoId = bg.videoId || parseYouTubeId(bg.url);
+      if (videoId) {
+        const iframe = document.createElement("iframe");
+        iframe.className = "lgsp-custom-bg-youtube";
+        iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&showinfo=0&rel=0&iv_load_policy=3&disablekb=1&modestbranding=1&enablejsapi=1`;
+        iframe.allow = "autoplay; encrypted-media";
+        iframe.setAttribute("frameborder", "0");
+        mediaLayer.appendChild(iframe);
+      }
+    } else if (bg.type === "video" || isVideoUrl) {
+      const video = document.createElement("video");
+      video.className = "lgsp-custom-bg-video";
+      video.src = bg.url;
+      video.autoplay = true;
+      video.muted = true;
+      video.loop = true;
+      video.playsInline = true;
+      video.setAttribute("playsinline", "");
+      video.setAttribute("muted", "");
+      video.setAttribute("autoplay", "");
+      video.setAttribute("loop", "");
+      mediaLayer.appendChild(video);
+    } else if (bg.type === "html" && bg.htmlContent) {
+      const iframe = document.createElement("iframe");
+      iframe.className = "lgsp-custom-bg-html";
+      iframe.sandbox = "allow-scripts allow-same-origin";
+      iframe.srcdoc = bg.htmlContent;
+      mediaLayer.appendChild(iframe);
+    } else if (bg.type === "color") {
+      const colorDiv = document.createElement("div");
+      colorDiv.className = "lgsp-custom-bg-color";
+      colorDiv.style.backgroundColor = bg.color || "#121316";
+      mediaLayer.appendChild(colorDiv);
+    }
+
+    overlayLayer = document.createElement("div");
+    overlayLayer.className = "lgsp-custom-bg-overlay";
+    overlayLayer.style.backgroundColor = `rgba(0, 0, 0, ${overlayOpacity})`;
+
+    container.appendChild(mediaLayer);
+    container.appendChild(overlayLayer);
+  }
 
   function applySettings(settings) {
     lastSettings = settings;
@@ -214,6 +381,7 @@
     root.setProperty("--lgsp-gallery-gap", "6px");
     root.setProperty("--lgsp-gallery-height", `${computeGalleryHeight(settings)}px`);
     enforceMaxWidth(settings);
+    applyCustomBackground(settings.customBg);
     requestAnimationFrame(() => {
       root.setProperty("--lgsp-gallery-height", `${computeGalleryHeight(settings)}px`);
       document.querySelectorAll(".lgsp-gallery-track").forEach((track) => {
@@ -453,7 +621,8 @@
       header.style.setProperty("overflow", "visible", "important");
     }
 
-    wrap.style.setProperty("max-width", widthValue, "important");
+    // wrap (#overall-container) est à l'intérieur de #page-wrap, sa largeur occupe 100% de #page-wrap
+    wrap.style.setProperty("max-width", "none", "important");
     wrap.style.setProperty("width", "100%", "important");
     wrap.style.setProperty("margin-left", "auto", "important");
     wrap.style.setProperty("margin-right", "auto", "important");
@@ -478,13 +647,22 @@
 
   if (isExtensionValid()) {
     try {
-      chrome.storage.local.get(defaultsWithPrefix(), (settings) => {
+      chrome.storage.local.get([storageKey("disabled"), ...Object.keys(defaultsWithPrefix())], (settings) => {
         if (!isExtensionValid() || chrome.runtime?.lastError || !settings) return;
+        if (settings[storageKey("disabled")] === true) {
+          cancelAndDisableExtension();
+          return;
+        }
         applySettings(normalizeSettings(settings));
       });
 
       chrome.storage.onChanged.addListener((changes, area) => {
         if (area !== "local") return;
+        if (changes[storageKey("disabled")] !== undefined) {
+          location.reload();
+          return;
+        }
+        if (isSiteDisabled) return;
         const relevant = Object.keys(changes).some((key) => key.startsWith(STORAGE_PREFIX));
         if (!relevant) return;
         if (!isExtensionValid()) return;
@@ -1108,6 +1286,23 @@
     });
   }
 
+  let customHardwareConfig = null;
+
+  function loadCustomHardware() {
+    if (!isExtensionValid()) return;
+    try {
+      chrome.storage.local.get(["customHardware"], (res) => {
+        if (!isExtensionValid() || chrome.runtime?.lastError || !res) return;
+        customHardwareConfig = res.customHardware || null;
+        cachedUserHardware = null;
+        if (typeof updateAllCompatWidgets === "function") {
+          updateAllCompatWidgets();
+        }
+      });
+    } catch {}
+  }
+  loadCustomHardware();
+
   if (isExtensionValid()) {
     try {
       chrome.storage.onChanged.addListener((changes, area) => {
@@ -1119,6 +1314,13 @@
           if (changes.favoriteHosts) {
             loadFavoriteHosts();
           }
+          if (changes.customHardware) {
+            customHardwareConfig = changes.customHardware.newValue || null;
+            cachedUserHardware = null;
+            if (typeof updateAllCompatWidgets === "function") {
+              updateAllCompatWidgets();
+            }
+          }
         }
       });
     } catch {}
@@ -1129,6 +1331,18 @@
   let cachedUserHardware = null;
 
   function getUserHardware() {
+    if (customHardwareConfig && customHardwareConfig.enabled) {
+      return {
+        gpu: (customHardwareConfig.gpu || "").trim() || "Carte graphique personnalisée",
+        rawGpu: customHardwareConfig.gpu || "",
+        vram: Number(customHardwareConfig.vram) || 8,
+        ram: Number(customHardwareConfig.ram) || 16,
+        cores: Number(customHardwareConfig.cores) || 8,
+        cpuGhz: Number(customHardwareConfig.cpuGhz) || 3.6,
+        isCustom: true,
+      };
+    }
+
     if (cachedUserHardware) return cachedUserHardware;
 
     let gpu = "Carte graphique standard";
@@ -1157,19 +1371,48 @@
     const ram = navigator.deviceMemory || 8;
     const cores = navigator.hardwareConcurrency || 4;
 
+    let estimatedVram = 8;
+    const upperGpu = (cleanGpu || gpu).toUpperCase();
+    if (upperGpu.includes("4090") || upperGpu.includes("3090")) estimatedVram = 24;
+    else if (upperGpu.includes("4080") || upperGpu.includes("7900")) estimatedVram = 16;
+    else if (upperGpu.includes("4070") || upperGpu.includes("3060") || upperGpu.includes("6700")) estimatedVram = 12;
+    else if (upperGpu.includes("3080")) estimatedVram = 10;
+    else if (upperGpu.includes("1080 TI")) estimatedVram = 11;
+    else if (upperGpu.includes("1080") || upperGpu.includes("1070") || upperGpu.includes("2070") || upperGpu.includes("2080") || upperGpu.includes("3070") || upperGpu.includes("5700") || upperGpu.includes("6600")) estimatedVram = 8;
+    else if (upperGpu.includes("1060") || upperGpu.includes("1660") || upperGpu.includes("5600")) estimatedVram = 6;
+    else if (upperGpu.includes("1050") || upperGpu.includes("1650") || upperGpu.includes("580") || upperGpu.includes("570")) estimatedVram = 4;
+    else if (upperGpu.includes("INTEL") || upperGpu.includes("UHD") || upperGpu.includes("HD GRAPHICS")) estimatedVram = 2;
+
     cachedUserHardware = {
       gpu: cleanGpu || gpu,
       rawGpu: gpu,
+      vram: estimatedVram,
       ram,
       cores,
+      cpuGhz: 3.6,
+      isCustom: false,
     };
 
     return cachedUserHardware;
   }
 
-  function getGpuScore(str) {
+  function getSingleGpuScore(str) {
     if (!str) return 20;
-    const s = str.toUpperCase();
+    const s = str.toUpperCase().trim();
+    if (!s) return 20;
+
+    // Détection TFLOPS (ex: "4TFlop GPU", "4 TFLOPS")
+    const tflopMatch = s.match(/(\d+(?:\.\d+)?)\s*T\s*FLOPS?/i);
+    if (tflopMatch) {
+      const tflops = parseFloat(tflopMatch[1]);
+      if (tflops >= 15) return 100;
+      if (tflops >= 10) return 85;
+      if (tflops >= 8) return 75;
+      if (tflops >= 6) return 65;
+      if (tflops >= 4) return 50;
+      if (tflops >= 2) return 35;
+      return 25;
+    }
 
     // 1. Puces graphiques intégrées Intel (Scores 6 - 28)
     if (s.includes("INTEL") || s.includes("HD GRAPHICS") || s.includes("UHD GRAPHICS") || s.includes("IRIS")) {
@@ -1202,47 +1445,48 @@
     if (s.includes("RTX 2070 SUPER") || s.includes("RTX 2070")) return 78;
     if (s.includes("RTX 2060 SUPER") || s.includes("RTX 2060")) return 70;
 
-    // 5. NVIDIA GTX 16 Series
-    if (s.includes("GTX 1660 TI") || s.includes("GTX 1660 SUPER")) return 64;
-    if (s.includes("GTX 1660")) return 58;
-    if (s.includes("GTX 1650 SUPER") || s.includes("GTX 1650 TI")) return 52;
-    if (s.includes("GTX 1650")) return 46;
+    // 5. NVIDIA GTX / GeForce 16 Series
+    if (s.includes("1660 TI") || s.includes("1660 SUPER") || s.includes("1660S")) return 62;
+    if (s.includes("1660")) return 58;
+    if (s.includes("1650 SUPER") || s.includes("1650 TI")) return 52;
+    if (s.includes("1650")) return 46;
 
     // 6. NVIDIA GTX 10 Series
-    if (s.includes("GTX 1080 TI") || s.includes("TITAN")) return 78;
-    if (s.includes("GTX 1080")) return 72;
-    if (s.includes("GTX 1070 TI") || s.includes("GTX 1070")) return 64;
-    if (s.includes("GTX 1060")) return 56;
-    if (s.includes("GTX 1050 TI")) return 42;
-    if (s.includes("GTX 1050")) return 36;
-    if (s.includes("GT 1030")) return 24;
+    if (s.includes("1080 TI") || s.includes("TITAN")) return 80;
+    if (s.includes("1080")) return 74;
+    if (s.includes("1070 TI")) return 70;
+    if (s.includes("1070")) return 66;
+    if (s.includes("1060")) return 56;
+    if (s.includes("1050 TI")) return 42;
+    if (s.includes("1050")) return 36;
+    if (s.includes("1030")) return 24;
 
     // 7. NVIDIA GTX 900 Series
-    if (s.includes("GTX 980 TI") || s.includes("GTX 980")) return 58;
-    if (s.includes("GTX 970")) return 50;
-    if (s.includes("GTX 960")) return 40;
-    if (s.includes("GTX 950")) return 34;
+    if (s.includes("980 TI") || s.includes("980")) return 58;
+    if (s.includes("970")) return 50;
+    if (s.includes("960")) return 40;
+    if (s.includes("950")) return 34;
 
     // 8. NVIDIA GTX 700 Series / 600 Series / GT
-    if (s.includes("GTX 780") || s.includes("GTX 770")) return 42;
-    if (s.includes("GTX 760") || s.includes("GTX 680") || s.includes("GTX 670") || s.includes("GTX 660")) return 34;
-    if (s.includes("GTX 750 TI")) return 30;
-    if (s.includes("GTX 750") || s.includes("GTX 650")) return 26;
-    if (s.includes("GT 730") || s.includes("GT 720") || s.includes("GT 710")) return 14;
+    if (s.includes("780") || s.includes("770")) return 42;
+    if (s.includes("760") || s.includes("680") || s.includes("670") || s.includes("660")) return 34;
+    if (s.includes("750 TI")) return 30;
+    if (s.includes("750") || s.includes("650")) return 26;
+    if (s.includes("730") || s.includes("720") || s.includes("710")) return 14;
 
     // 9. AMD Radeon RX 7000 / 6000 / 5000 Series
-    if (s.includes("RX 7900") || s.includes("RX 7800")) return 100;
+    if (s.includes("RX 7900") || s.includes("RX 7800") || s.includes("7900 XT") || s.includes("7800 XT")) return 100;
     if (s.includes("RX 7700") || s.includes("RX 7600") || s.includes("RX 6800") || s.includes("RX 6750") || s.includes("RX 6700")) return 88;
     if (s.includes("RX 6650") || s.includes("RX 6600")) return 76;
     if (s.includes("RX 6500") || s.includes("RX 6400")) return 48;
-    if (s.includes("RX 5700")) return 74;
-    if (s.includes("RX 5600")) return 68;
-    if (s.includes("RX 5500")) return 52;
+    if (s.includes("RX 5700") || s.includes("5700 XT")) return 74;
+    if (s.includes("RX 5600") || s.includes("5600 XT")) return 64;
+    if (s.includes("RX 5500") || s.includes("5500 XT")) return 52;
 
     // 10. AMD Radeon RX 500 / 400 / Vega / R9 / R7 Series
     if (s.includes("VEGA 64") || s.includes("VEGA 56") || s.includes("RADEON VII")) return 66;
-    if (s.includes("RX 590") || s.includes("RX 580")) return 56;
-    if (s.includes("RX 570") || s.includes("RX 480")) return 50;
+    if (s.includes("RX 590") || s.includes("RX 580") || s.includes("580")) return 56;
+    if (s.includes("RX 570") || s.includes("RX 480") || s.includes("570") || s.includes("480")) return 50;
     if (s.includes("RX 470") || s.includes("R9 390") || s.includes("R9 290")) return 46;
     if (s.includes("RX 560") || s.includes("RX 460") || s.includes("R9 380") || s.includes("R9 280")) return 38;
     if (s.includes("RX 550") || s.includes("R9 270") || s.includes("R7 370") || s.includes("R7 260")) return 32;
@@ -1256,13 +1500,13 @@
       if (n >= 2000) return 72;
     }
 
-    const gtxMatch = s.match(/GTX\s*(\d{3,4})/i);
+    const gtxMatch = s.match(/(?:GTX|GEFORCE)?\s*(\d{3,4})/i);
     if (gtxMatch) {
       const n = parseInt(gtxMatch[1], 10);
       if (n >= 1660) return 60;
       if (n >= 1650) return 48;
-      if (n >= 1080) return 72;
-      if (n >= 1070) return 64;
+      if (n >= 1080) return 74;
+      if (n >= 1070) return 66;
       if (n >= 1060) return 56;
       if (n >= 1050) return 38;
       if (n >= 970) return 50;
@@ -1271,7 +1515,7 @@
       return 30;
     }
 
-    const rxMatch = s.match(/RX\s*(\d{3,4})/i);
+    const rxMatch = s.match(/(?:RX\s*)?(\d{3,4})/i);
     if (rxMatch) {
       const n = parseInt(rxMatch[1], 10);
       if (n >= 7000) return 90;
@@ -1294,6 +1538,16 @@
     if (s.includes("NVIDIA") || s.includes("GEFORCE") || s.includes("RADEON")) return 45;
 
     return 20;
+  }
+
+  function getGpuScore(str) {
+    if (!str) return 20;
+    const parts = str.split(/\s*(?:\/|\||\bou\b|\bor\b)\s*/i).filter((p) => p.trim().length > 1);
+    if (parts.length > 1) {
+      const scores = parts.map(getSingleGpuScore);
+      return Math.min(...scores);
+    }
+    return getSingleGpuScore(str);
   }
 
   function parseCpuCores(str) {
@@ -1324,6 +1578,8 @@
     let minRamGB = null;
     let minGpuStr = "";
     let minCpuStr = "";
+    let minVramGB = null;
+    let minCpuGhz = null;
 
     (specs || []).forEach((item) => {
       const l = item.label.toLowerCase();
@@ -1338,12 +1594,22 @@
         }
       }
 
-      if (l.includes("graphique") || l.includes("graphics") || l.includes("carte graphique") || l.includes("video")) {
+      if (l.includes("graphique") || l.includes("graphics") || l.includes("carte graphique") || l.includes("video") || l.includes("vram")) {
         minGpuStr = v;
+        const vramMatch = v.match(/(\d+(?:\.\d+)?)\s*(GB|Go|MB|Mo)\s*(?:VRAM|vidéo|video|dédiée|dedicated)?/i);
+        if (vramMatch && (v.toLowerCase().includes("vram") || v.toLowerCase().includes("vidéo") || v.toLowerCase().includes("video") || v.toLowerCase().includes("mb") || v.toLowerCase().includes("gb") || v.toLowerCase().includes("go"))) {
+          const val = parseFloat(vramMatch[1]);
+          const unit = vramMatch[2].toUpperCase();
+          minVramGB = (unit === "MB" || unit === "MO") ? Math.max(0.5, +(val / 1024).toFixed(1)) : val;
+        }
       }
 
       if (l.includes("processeur") || l.includes("processor") || l.includes("cpu")) {
         minCpuStr = v;
+        const ghzMatch = v.match(/(\d+(?:\.\d+)?)\s*GHz/i);
+        if (ghzMatch) {
+          minCpuGhz = parseFloat(ghzMatch[1]);
+        }
       }
     });
 
@@ -1352,25 +1618,35 @@
     return {
       minRamGB: minRamGB ?? 4,
       minGpuStr,
+      minVramGB,
       minCpuStr: minCpuStr || "Processeur double cœur standard",
       minCpuCores: cpuInfo.minCores,
+      minCpuGhz,
     };
   }
 
   function evaluateCompatibility(userHardware, gameSpecs) {
-    const { minRamGB, minGpuStr, minCpuStr, minCpuCores } = parseGameRequirements(gameSpecs);
+    const { minRamGB, minGpuStr, minVramGB, minCpuStr, minCpuCores, minCpuGhz } = parseGameRequirements(gameSpecs);
     const userRam = userHardware.ram || 8;
     const userCores = userHardware.cores || 4;
+    const userVram = userHardware.vram || 8;
+    const userGhz = userHardware.cpuGhz || 3.6;
     const userGpuScore = getGpuScore(userHardware.gpu);
     const gameGpuScore = getGpuScore(minGpuStr);
 
     const ramOk = userRam >= minRamGB;
     const ramClose = userRam >= minRamGB * 0.75;
 
-    const gpuOk = userGpuScore >= gameGpuScore;
+    let gpuOk = userGpuScore >= gameGpuScore;
+    if (minVramGB && userVram < minVramGB) {
+      gpuOk = false;
+    }
     const gpuClose = userGpuScore >= gameGpuScore * 0.8;
 
-    const cpuOk = userCores >= minCpuCores;
+    let cpuOk = userCores >= minCpuCores;
+    if (minCpuGhz && userGhz < minCpuGhz * 0.85) {
+      cpuOk = false;
+    }
 
     let status = "ok";
     let label = "PC Compatible";
@@ -1395,19 +1671,22 @@
         label = "Config Insuffisante";
         icon = "❌";
         summary = !gpuOk
-          ? "Votre carte graphique est inférieure à la configuration minimale requise."
+          ? "Votre carte graphique ou mémoire vidéo (VRAM) est inférieure à la configuration minimale requise."
           : "Votre quantité de mémoire vive (RAM) est insuffisante pour ce jeu.";
       }
     }
+
+    const userGpuDisplay = `${userHardware.gpu} (${userVram} Go VRAM)`;
+    const userCpuDisplay = `${userCores} cœurs (@ ${userGhz} GHz)`;
 
     return {
       status,
       label,
       icon,
       summary,
-      userGpu: userHardware.gpu,
+      userGpu: userGpuDisplay,
       userRam: `${userRam} Go`,
-      userCores: `${userCores} cœurs`,
+      userCores: userCpuDisplay,
       reqGpu: minGpuStr || "Non spécifié",
       reqRam: `${minRamGB} Go`,
       reqCpu: minCpuStr || `${minCpuCores} cœurs`,
@@ -1415,6 +1694,120 @@
       gpuOk,
       cpuOk,
     };
+  }
+
+  function renderCompatWidget(compatContainer, minSpecs) {
+    const userHw = getUserHardware();
+    const compat = evaluateCompatibility(userHw, minSpecs);
+
+    compatContainer.innerHTML = "";
+    compatContainer._minSpecs = minSpecs;
+
+    const compatBtn = document.createElement("button");
+    compatBtn.type = "button";
+    compatBtn.className = `lgsp-steam-badge lgsp-compat-btn lgsp-compat-${compat.status}`;
+    compatBtn.innerHTML = `${compat.icon} <span>${compat.label}</span> <span class="lgsp-compat-arrow">▼</span>`;
+
+    const compatPopover = document.createElement("div");
+    compatPopover.className = "lgsp-compat-popover lgsp-hidden";
+
+    const checkIcon = `<span class="lgsp-check">${SVG_CHECK}</span>`;
+    const crossIcon = `<span class="lgsp-cross">${SVG_CROSS}</span>`;
+    const customBadge = userHw.isCustom ? ' <span style="font-size:10px; color:#fbbf24; font-weight:600; margin-left:4px;">(Manuel)</span>' : '';
+
+    compatPopover.innerHTML = `
+      <div class="lgsp-compat-header">
+        <div class="lgsp-compat-title">${compat.icon} Analyse de compatibilité PC${customBadge}</div>
+        <div class="lgsp-compat-subtitle">${compat.summary}</div>
+      </div>
+      <div class="lgsp-compat-table">
+        <div class="lgsp-compat-row">
+          <div class="lgsp-compat-row-header">
+            <span class="lgsp-compat-comp-name">🎮 Carte Graphique (GPU)</span>
+            <span class="lgsp-compat-status-tag ${compat.gpuOk ? "lgsp-status-ok" : "lgsp-status-fail"}">
+              ${compat.gpuOk ? `${checkIcon} Compatible` : `${crossIcon} Inférieur`}
+            </span>
+          </div>
+          <div class="lgsp-compat-details">
+            <div><span class="lgsp-compat-dim">Votre PC :</span> <strong class="lgsp-compat-user-val">${compat.userGpu}</strong></div>
+            <div><span class="lgsp-compat-dim">Requis :</span> <span class="lgsp-compat-req-val">${compat.reqGpu}</span></div>
+          </div>
+        </div>
+        <div class="lgsp-compat-row">
+          <div class="lgsp-compat-row-header">
+            <span class="lgsp-compat-comp-name">⚡ Mémoire Vive (RAM)</span>
+            <span class="lgsp-compat-status-tag ${compat.ramOk ? "lgsp-status-ok" : "lgsp-status-fail"}">
+              ${compat.ramOk ? `${checkIcon} Compatible` : `${crossIcon} Insuffisante`}
+            </span>
+          </div>
+          <div class="lgsp-compat-details">
+            <div><span class="lgsp-compat-dim">Votre PC :</span> <strong class="lgsp-compat-user-val">${compat.userRam}</strong></div>
+            <div><span class="lgsp-compat-dim">Requis :</span> <span class="lgsp-compat-req-val">${compat.reqRam}</span></div>
+          </div>
+        </div>
+        <div class="lgsp-compat-row">
+          <div class="lgsp-compat-row-header">
+            <span class="lgsp-compat-comp-name">🖥️ Processeur (CPU)</span>
+            <span class="lgsp-compat-status-tag ${compat.cpuOk ? "lgsp-status-ok" : "lgsp-status-fail"}">
+              ${compat.cpuOk ? `${checkIcon} Compatible` : `${crossIcon} Limite`}
+            </span>
+          </div>
+          <div class="lgsp-compat-details">
+            <div><span class="lgsp-compat-dim">Votre PC :</span> <strong class="lgsp-compat-user-val">${compat.userCores}</strong></div>
+            <div><span class="lgsp-compat-dim">Requis :</span> <span class="lgsp-compat-req-val">${compat.reqCpu}</span></div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    let compatLeaveTimer = null;
+    const openCompatPopover = () => {
+      if (compatLeaveTimer) { clearTimeout(compatLeaveTimer); compatLeaveTimer = null; }
+      document.querySelectorAll(".lgsp-sysreq-popover").forEach((p) => p.classList.add("lgsp-hidden"));
+      document.querySelectorAll(".lgsp-sysreq-btn").forEach((b) => b.classList.remove("lgsp-sysreq-active"));
+      compatPopover.classList.remove("lgsp-hidden");
+      compatBtn.classList.add("lgsp-compat-active");
+    };
+
+    const closeCompatPopover = () => {
+      if (compatLeaveTimer) clearTimeout(compatLeaveTimer);
+      compatLeaveTimer = setTimeout(() => {
+        compatPopover.classList.add("lgsp-hidden");
+        compatBtn.classList.remove("lgsp-compat-active");
+      }, 150);
+    };
+
+    compatContainer.addEventListener("mouseenter", openCompatPopover);
+    compatContainer.addEventListener("mouseleave", closeCompatPopover);
+
+    compatBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const isClosed = compatPopover.classList.contains("lgsp-hidden");
+      if (isClosed) openCompatPopover();
+      else {
+        compatPopover.classList.add("lgsp-hidden");
+        compatBtn.classList.remove("lgsp-compat-active");
+      }
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!compatContainer.contains(e.target)) {
+        compatPopover.classList.add("lgsp-hidden");
+        compatBtn.classList.remove("lgsp-compat-active");
+      }
+    });
+
+    compatContainer.appendChild(compatBtn);
+    compatContainer.appendChild(compatPopover);
+  }
+
+  function updateAllCompatWidgets() {
+    document.querySelectorAll(".lgsp-compat-wrapper").forEach((container) => {
+      if (container._minSpecs) {
+        renderCompatWidget(container, container._minSpecs);
+      }
+    });
   }
 
   // Construit le bandeau complet d'informations de la boutique (Steam, GOG, Epic, etc.)
@@ -1635,108 +2028,9 @@
         wrap.appendChild(reqContainer);
 
         // 8. Comparateur automatique de compatibilité PC
-        const userHw = getUserHardware();
-        const compat = evaluateCompatibility(userHw, minSpecs);
-
         const compatContainer = document.createElement("div");
         compatContainer.className = "lgsp-compat-wrapper";
-
-        const compatBtn = document.createElement("button");
-        compatBtn.type = "button";
-        compatBtn.className = `lgsp-steam-badge lgsp-compat-btn lgsp-compat-${compat.status}`;
-        compatBtn.innerHTML = `${compat.icon} <span>${compat.label}</span> <span class="lgsp-compat-arrow">▼</span>`;
-
-        const compatPopover = document.createElement("div");
-        compatPopover.className = "lgsp-compat-popover lgsp-hidden";
-
-        const checkIcon = `<span class="lgsp-check">${SVG_CHECK}</span>`;
-        const crossIcon = `<span class="lgsp-cross">${SVG_CROSS}</span>`;
-
-        compatPopover.innerHTML = `
-          <div class="lgsp-compat-header">
-            <div class="lgsp-compat-title">${compat.icon} Analyse de compatibilité PC</div>
-            <div class="lgsp-compat-subtitle">${compat.summary}</div>
-          </div>
-          <div class="lgsp-compat-table">
-            <div class="lgsp-compat-row">
-              <div class="lgsp-compat-row-header">
-                <span class="lgsp-compat-comp-name">🎮 Carte Graphique (GPU)</span>
-                <span class="lgsp-compat-status-tag ${compat.gpuOk ? "lgsp-status-ok" : "lgsp-status-fail"}">
-                  ${compat.gpuOk ? `${checkIcon} Compatible` : `${crossIcon} Inférieur`}
-                </span>
-              </div>
-              <div class="lgsp-compat-details">
-                <div><span class="lgsp-compat-dim">Votre PC :</span> <strong class="lgsp-compat-user-val">${compat.userGpu}</strong></div>
-                <div><span class="lgsp-compat-dim">Requis :</span> <span class="lgsp-compat-req-val">${compat.reqGpu}</span></div>
-              </div>
-            </div>
-            <div class="lgsp-compat-row">
-              <div class="lgsp-compat-row-header">
-                <span class="lgsp-compat-comp-name">⚡ Mémoire Vive (RAM)</span>
-                <span class="lgsp-compat-status-tag ${compat.ramOk ? "lgsp-status-ok" : "lgsp-status-fail"}">
-                  ${compat.ramOk ? `${checkIcon} Compatible` : `${crossIcon} Insuffisante`}
-                </span>
-              </div>
-              <div class="lgsp-compat-details">
-                <div><span class="lgsp-compat-dim">Votre PC :</span> <strong class="lgsp-compat-user-val">${compat.userRam}</strong></div>
-                <div><span class="lgsp-compat-dim">Requis :</span> <span class="lgsp-compat-req-val">${compat.reqRam}</span></div>
-              </div>
-            </div>
-            <div class="lgsp-compat-row">
-              <div class="lgsp-compat-row-header">
-                <span class="lgsp-compat-comp-name">🖥️ Processeur (CPU)</span>
-                <span class="lgsp-compat-status-tag ${compat.cpuOk ? "lgsp-status-ok" : "lgsp-status-fail"}">
-                  ${compat.cpuOk ? `${checkIcon} Compatible` : `${crossIcon} Limite`}
-                </span>
-              </div>
-              <div class="lgsp-compat-details">
-                <div><span class="lgsp-compat-dim">Votre PC :</span> <strong class="lgsp-compat-user-val">${compat.userCores}</strong></div>
-                <div><span class="lgsp-compat-dim">Requis :</span> <span class="lgsp-compat-req-val">${compat.reqCpu}</span></div>
-              </div>
-            </div>
-          </div>
-        `;
-
-        let compatLeaveTimer = null;
-        const openCompatPopover = () => {
-          if (compatLeaveTimer) { clearTimeout(compatLeaveTimer); compatLeaveTimer = null; }
-          document.querySelectorAll(".lgsp-sysreq-popover").forEach((p) => p.classList.add("lgsp-hidden"));
-          document.querySelectorAll(".lgsp-sysreq-btn").forEach((b) => b.classList.remove("lgsp-sysreq-active"));
-          compatPopover.classList.remove("lgsp-hidden");
-          compatBtn.classList.add("lgsp-compat-active");
-        };
-
-        const closeCompatPopover = () => {
-          if (compatLeaveTimer) clearTimeout(compatLeaveTimer);
-          compatLeaveTimer = setTimeout(() => {
-            compatPopover.classList.add("lgsp-hidden");
-            compatBtn.classList.remove("lgsp-compat-active");
-          }, 150);
-        };
-
-        compatContainer.addEventListener("mouseenter", openCompatPopover);
-        compatContainer.addEventListener("mouseleave", closeCompatPopover);
-
-        compatBtn.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          const isClosed = compatPopover.classList.contains("lgsp-hidden");
-          if (isClosed) openCompatPopover();
-          else {
-            compatPopover.classList.add("lgsp-hidden");
-            compatBtn.classList.remove("lgsp-compat-active");
-          }
-        });
-
-        document.addEventListener("click", (e) => {
-          if (!compatContainer.contains(e.target)) {
-            compatPopover.classList.add("lgsp-hidden");
-            compatBtn.classList.remove("lgsp-compat-active");
-          }
-        });
-
-        compatContainer.appendChild(compatBtn);
-        compatContainer.appendChild(compatPopover);
+        renderCompatWidget(compatContainer, minSpecs);
         wrap.appendChild(compatContainer);
       }
 
@@ -2381,6 +2675,17 @@
         img.dataset.lgspSrc = imgSrc;
         img.loading = "lazy";
         img.alt = item.title || "Capture";
+
+        if (item.type === "youtube" && item.id) {
+          img.onerror = () => {
+            if (img.src.includes("hqdefault.jpg")) {
+              img.src = `https://img.youtube.com/vi/${item.id}/mqdefault.jpg`;
+            } else if (img.src.includes("mqdefault.jpg")) {
+              img.src = `https://img.youtube.com/vi/${item.id}/0.jpg`;
+            }
+          };
+        }
+
         itemWrap.appendChild(img);
 
         if (item.type === "youtube" || item.type === "steam_movie") {
@@ -2751,6 +3056,109 @@
 
   // --- Rendu de l'accordéon des liens de téléchargement avec flèche déroulante ---
 
+  // --- Vérification automatique de la disponibilité des liens favoris ---
+  const localFavLinksChecked = new Map();
+
+  function applyLinkStatusToCard(cardEl, res) {
+    if (!cardEl || !res) return;
+    let statusBadge = cardEl.querySelector(".lgsp-dl-status-badge");
+    if (!statusBadge) {
+      statusBadge = document.createElement("span");
+      const rightGroup = cardEl.querySelector(".lgsp-dl-right-group");
+      if (rightGroup) {
+        rightGroup.insertBefore(statusBadge, rightGroup.firstChild);
+      } else {
+        cardEl.appendChild(statusBadge);
+      }
+    }
+
+    cardEl.classList.remove("lgsp-dl-state-alive", "lgsp-dl-state-dead", "lgsp-dl-state-blocked");
+
+    if (res.status === "alive") {
+      cardEl.classList.add("lgsp-dl-state-alive");
+      statusBadge.className = "lgsp-dl-status-badge lgsp-dl-status-alive";
+      statusBadge.textContent = "🟢";
+      statusBadge.title = res.message || "Fichier disponible et accessible sur l'hébergeur";
+    } else if (res.status === "dead") {
+      cardEl.classList.add("lgsp-dl-state-dead");
+      statusBadge.className = "lgsp-dl-status-badge lgsp-dl-status-dead";
+      statusBadge.textContent = "❌";
+      statusBadge.title = `⚠️ Attention : ${res.message || "Fichier supprimé ou introuvable sur l'hébergeur"}`;
+    } else if (res.status === "blocked") {
+      cardEl.classList.add("lgsp-dl-state-blocked");
+      statusBadge.className = "lgsp-dl-status-badge lgsp-dl-status-blocked";
+      statusBadge.textContent = "🚫";
+      statusBadge.title = `⚠️ Attention : ${res.message || "Fichier bloqué (DMCA / Abus)"}`;
+    } else {
+      if (statusBadge) statusBadge.remove();
+    }
+  }
+
+  function checkFavoriteDownloadLinks(panel) {
+    if (!panel || !isExtensionValid()) return;
+    const favCards = panel.querySelectorAll(".lgsp-dl-card.lgsp-dl-card-fav");
+    if (!favCards || favCards.length === 0) return;
+
+    favCards.forEach((cardEl) => {
+      const url = cardEl.getAttribute("href") || cardEl.dataset.dlUrl;
+      const host = cardEl.dataset.dlHost;
+      if (!url || cardEl.classList.contains("lgsp-dl-card-disabled")) return;
+
+      // Si déjà vérifié dans cette session
+      if (localFavLinksChecked.has(url)) {
+        applyLinkStatusToCard(cardEl, localFavLinksChecked.get(url));
+        return;
+      }
+
+      // Si vérification déjà en cours sur cette carte
+      if (cardEl._lgspChecking) return;
+      cardEl._lgspChecking = true;
+
+      // Indicateur visuel d'attente (emoji sablier seul)
+      let statusBadge = cardEl.querySelector(".lgsp-dl-status-badge");
+      if (!statusBadge) {
+        statusBadge = document.createElement("span");
+        statusBadge.className = "lgsp-dl-status-badge lgsp-dl-status-checking";
+        statusBadge.textContent = "⏳";
+        statusBadge.title = "Vérification de la disponibilité du fichier sur l'hébergeur...";
+
+        const rightGroup = cardEl.querySelector(".lgsp-dl-right-group");
+        if (rightGroup) {
+          rightGroup.insertBefore(statusBadge, rightGroup.firstChild);
+        } else {
+          cardEl.appendChild(statusBadge);
+        }
+      } else {
+        statusBadge.className = "lgsp-dl-status-badge lgsp-dl-status-checking";
+        statusBadge.textContent = "⏳";
+        statusBadge.title = "Vérification de la disponibilité du fichier sur l'hébergeur...";
+      }
+
+      try {
+        chrome.runtime.sendMessage(
+          {
+            type: "CHECK_DOWNLOAD_LINK",
+            url,
+            host,
+          },
+          (res) => {
+            cardEl._lgspChecking = false;
+            if (!isExtensionValid() || chrome.runtime?.lastError || !res) {
+              if (statusBadge) statusBadge.remove();
+              return;
+            }
+
+            localFavLinksChecked.set(url, res);
+            applyLinkStatusToCard(cardEl, res);
+          }
+        );
+      } catch (e) {
+        cardEl._lgspChecking = false;
+        if (statusBadge) statusBadge.remove();
+      }
+    });
+  }
+
   function renderDownloadsDropdown(card, downloadLinks) {
     const existingWrapper = card.querySelector(".lgsp-downloads-wrapper");
     const wasExpanded = existingWrapper?.querySelector(".lgsp-downloads-toggle")?.getAttribute("aria-expanded") === "true";
@@ -2858,6 +3266,8 @@
         const item = document.createElement("a");
         item.className = `lgsp-dl-card ${themeClass} ${isFavorite ? "lgsp-dl-card-fav" : ""}`;
         item.href = dl.url;
+        item.dataset.dlUrl = dl.url;
+        item.dataset.dlHost = dl.host;
         item.target = "_blank";
         item.rel = "noopener noreferrer";
         item.title = `Télécharger via ${dl.host}\n⭐ Note : ${evalData.score.toFixed(1)}/10 (Tier ${evalData.tier})\n🛡️ Sécurité & Propreté : ${evalData.safety}/10\n⚡ Vitesse Gratuit : ${evalData.speed}/10\n💡 ${evalData.desc}${dl.filename ? `\n\n📁 Fichier : ${dl.filename}` : ""}`;
@@ -2876,7 +3286,7 @@
 
         const scoreBadge = document.createElement("span");
         scoreBadge.className = `lgsp-dl-score-badge lgsp-tier-${evalData.tier.toLowerCase()}`;
-        scoreBadge.textContent = evalData.score.toFixed(1);
+        scoreBadge.textContent = evalData.tier;
 
         const dlIcon = document.createElement("span");
         dlIcon.className = "lgsp-dl-download-icon";
@@ -2888,11 +3298,17 @@
         item.appendChild(hostGroup);
         item.appendChild(rightGroup);
 
+        // Si le lien a déjà été vérifié précédemment, appliquer son statut
+        if (isFavorite && localFavLinksChecked.has(dl.url)) {
+          applyLinkStatusToCard(item, localFavLinksChecked.get(dl.url));
+        }
+
         item.addEventListener("click", (e) => e.stopPropagation());
         grid.appendChild(item);
       } else {
         const item = document.createElement("div");
         item.className = `lgsp-dl-card lgsp-dl-card-disabled ${themeClass} ${isFavorite ? "lgsp-dl-card-fav" : ""}`;
+        item.dataset.dlHost = dl.host;
         item.title = `En cours d'upload sur ${dl.host}${dl.filename ? `\nFichier: ${dl.filename}` : ""}`;
 
         const hostGroup = document.createElement("div");
@@ -2921,15 +3337,26 @@
       e.preventDefault();
       e.stopPropagation();
       const isExpanded = toggleBtn.getAttribute("aria-expanded") === "true";
-      toggleBtn.setAttribute("aria-expanded", String(!isExpanded));
-      toggleBtn.classList.toggle("lgsp-expanded", !isExpanded);
-      panel.classList.toggle("lgsp-hidden", isExpanded);
+      const nextExpanded = !isExpanded;
+      toggleBtn.setAttribute("aria-expanded", String(nextExpanded));
+      toggleBtn.classList.toggle("lgsp-expanded", nextExpanded);
+      panel.classList.toggle("lgsp-hidden", !nextExpanded);
+
+      if (nextExpanded) {
+        checkFavoriteDownloadLinks(panel);
+      }
     });
 
     wrapper.appendChild(toggleBtn);
     wrapper.appendChild(panel);
 
     card.appendChild(wrapper);
+
+    if (wasExpanded) {
+      requestAnimationFrame(() => {
+        checkFavoriteDownloadLinks(panel);
+      });
+    }
   }
 
   // --- Chargement et orchestration par carte ---------------------------------
@@ -3218,6 +3645,7 @@
   }
 
   function scanForCards() {
+    if (isSiteDisabled) return;
     neutralizeAnnoyingPopups();
     adjustSkidrowElements();
     if (lastSettings) enforceMaxWidth(lastSettings);
@@ -3749,8 +4177,32 @@
       // Scanner et enrichir les nouvelles cartes
       scanForCards();
       updateActivePageFromScroll();
+
+      const existingRetry = document.getElementById("lgsp-infinite-retry-box");
+      if (existingRetry) existingRetry.remove();
     } catch (err) {
       console.warn("[Game Sites Screenshots] Erreur chargement page suivante :", err);
+      let retryBox = document.getElementById("lgsp-infinite-retry-box");
+      if (!retryBox && infiniteSentinelEl) {
+        retryBox = document.createElement("div");
+        retryBox.id = "lgsp-infinite-retry-box";
+        retryBox.style.cssText = "text-align:center; margin:16px 0; padding:10px;";
+        retryBox.innerHTML = `
+          <button type="button" style="background:#23233f; color:#cf9f4f; border:1px solid rgba(207,159,79,0.4); border-radius:6px; padding:8px 16px; font-weight:600; font-size:12px; cursor:pointer; transition:all 0.15s ease;">
+            ⚠️ Erreur serveur Skidrow (${err.message || "522"}) • Cliquer pour réessayer
+          </button>
+        `;
+        const retryBtn = retryBox.querySelector("button");
+        if (retryBtn) {
+          retryBtn.addEventListener("click", () => {
+            retryBox.remove();
+            loadNextPage();
+          });
+        }
+        if (infiniteSentinelEl.parentNode) {
+          infiniteSentinelEl.parentNode.insertBefore(retryBox, infiniteSentinelEl);
+        }
+      }
     } finally {
       if (infiniteLoaderEl) {
         infiniteLoaderEl.classList.add("lgsp-hidden");
@@ -3814,16 +4266,23 @@
   });
 
   function init() {
+    if (isSiteDisabled) return;
     if (lastSettings) {
       applySettings(lastSettings);
     } else if (isExtensionValid()) {
       try {
-        chrome.storage.local.get(defaultsWithPrefix(), (settings) => {
+        chrome.storage.local.get([storageKey("disabled"), ...Object.keys(defaultsWithPrefix())], (settings) => {
           if (!isExtensionValid() || chrome.runtime?.lastError || !settings) return;
+          if (settings[storageKey("disabled")] === true) {
+            cancelAndDisableExtension();
+            return;
+          }
           applySettings(normalizeSettings(settings));
         });
       } catch {}
     }
+
+    if (isSiteDisabled) return;
 
     scanForCards();
     setupInfiniteScroll();
@@ -3831,6 +4290,7 @@
     if (document.body) {
       let scanScheduled = false;
       const mutationObserver = new MutationObserver((mutations) => {
+        if (isSiteDisabled) return;
         let hasNewCards = false;
         for (const m of mutations) {
           for (const node of m.addedNodes) {
@@ -3850,7 +4310,7 @@
           scanScheduled = true;
           requestAnimationFrame(() => {
             scanScheduled = false;
-            scanForCards();
+            if (!isSiteDisabled) scanForCards();
           });
         }
       });
@@ -3862,6 +4322,7 @@
 
     // Lever l'écran de chargement dès que la structure initiale est prête
     requestAnimationFrame(() => {
+      if (isSiteDisabled) return;
       if (lastSettings) applySettings(lastSettings);
       hidePageLoader();
     });

@@ -3,6 +3,7 @@
 
 const steamGameCache = new Map();
 const steamSearchCache = new Map();
+const downloadLinkCache = new Map();
 
 // Configuration par défaut du cache
 const DEFAULT_CACHE_CONFIG = {
@@ -12,7 +13,7 @@ const DEFAULT_CACHE_CONFIG = {
 
 const isCacheKey = (k) =>
   typeof k === "string" &&
-  (k.startsWith("lgsp_g_") || k.startsWith("lgsp_s_") || k.startsWith("lgsp_p_") || k.startsWith("lgsp_cache_"));
+  (k.startsWith("lgsp_g_") || k.startsWith("lgsp_s_") || k.startsWith("lgsp_p_") || k.startsWith("lgsp_link_") || k.startsWith("lgsp_cache_"));
 
 function hashString(str) {
   let hash = 5381;
@@ -176,6 +177,7 @@ async function getCacheStats() {
 async function clearAllCache() {
   steamGameCache.clear();
   steamSearchCache.clear();
+  downloadLinkCache.clear();
 
   const all = await chrome.storage.local.get(null);
   const keysToRemove = Object.keys(all).filter((k) => isCacheKey(k));
@@ -282,6 +284,16 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       .catch((err) => {
         console.warn("[Background] Check updates error:", err);
         sendResponse({ success: false, error: err.message });
+      });
+    return true;
+  }
+
+  if (msg.type === "CHECK_DOWNLOAD_LINK") {
+    checkDownloadLinkStatusWithCache(msg.url, msg.host)
+      .then((res) => sendResponse(res))
+      .catch((err) => {
+        console.warn("[Background] Link check error:", err);
+        sendResponse({ status: "unknown", message: err.message || "Erreur de vérification" });
       });
     return true;
   }
@@ -894,5 +906,338 @@ chrome.alarms.onAlarm.addListener((alarm) => {
     checkExtensionUpdates();
   }
 });
+
+// --- Vérificateur de disponibilité et de statut des liens de téléchargement ---
+
+const TTL_LINK_STATUS = 60 * 60 * 1000; // 1 heure
+
+async function checkDownloadLinkStatusWithCache(url, host) {
+  if (!url || typeof url !== "string") {
+    return { status: "unknown", message: "URL invalide" };
+  }
+
+  const cleanUrl = url.trim();
+  if (downloadLinkCache.has(cleanUrl)) {
+    return downloadLinkCache.get(cleanUrl);
+  }
+
+  const cacheKey = `lgsp_link_${hashString(cleanUrl)}`;
+  const persistent = await getStorageCache(cacheKey);
+  if (persistent && persistent.status) {
+    downloadLinkCache.set(cleanUrl, persistent);
+    return persistent;
+  }
+
+  const result = await checkDownloadLinkStatus(cleanUrl, host);
+  if (result && result.status) {
+    downloadLinkCache.set(cleanUrl, result);
+    await setStorageCache(cacheKey, result, TTL_LINK_STATUS);
+  }
+  return result || { status: "unknown", message: "Vérification indisponible" };
+}
+
+async function checkDownloadLinkStatus(url, host) {
+  try {
+    // 1. Liens Magnet Torrent (toujours valides par définition)
+    if (url.startsWith("magnet:")) {
+      return { status: "alive", message: "Lien Magnet Torrent (P2P direct)" };
+    }
+
+    const hostLower = (host || "").toLowerCase();
+    const urlLower = url.toLowerCase();
+
+    // 2. GoFile
+    const gofileMatch = url.match(/gofile\.io\/d\/([a-zA-Z0-9_-]+)/i);
+    if (gofileMatch || hostLower.includes("gofile")) {
+      const contentId = gofileMatch ? gofileMatch[1] : null;
+      if (contentId) {
+        try {
+          const res = await fetch(`https://api.gofile.io/contents/${encodeURIComponent(contentId)}?wt=4fd6sg89d7s6`, {
+            signal: AbortSignal.timeout(7000),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.status === "ok") {
+              return { status: "alive", message: "Fichier disponible (GoFile)" };
+            }
+            if (data.status === "error-notFound" || data.status === "error-notAllowed") {
+              return { status: "dead", message: "Fichier introuvable ou supprimé (GoFile)" };
+            }
+            if (data.status === "error-overloaded") {
+              return { status: "blocked", message: "Serveur GoFile temporairement surchargé" };
+            }
+          }
+        } catch (e) {}
+      }
+    }
+
+    // 3. PixelDrain
+    const pixelMatch = url.match(/pixeldrain\.com\/(?:u|l)\/([a-zA-Z0-9_-]+)/i);
+    if (pixelMatch || hostLower.includes("pixeldrain")) {
+      const fileId = pixelMatch ? pixelMatch[1] : null;
+      if (fileId) {
+        try {
+          const res = await fetch(`https://pixeldrain.com/api/file/${encodeURIComponent(fileId)}/info`, {
+            signal: AbortSignal.timeout(7000),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success === true) {
+              return { status: "alive", message: "Fichier disponible (Pixeldrain)" };
+            }
+            if (data.value === "file_not_found") {
+              return { status: "dead", message: "Fichier supprimé (Pixeldrain)" };
+            }
+            if (data.value === "abuse" || data.value === "copyright") {
+              return { status: "blocked", message: "Fichier bloqué pour DMCA/Abus (Pixeldrain)" };
+            }
+          } else if (res.status === 404) {
+            return { status: "dead", message: "Fichier introuvable (Pixeldrain)" };
+          }
+        } catch (e) {}
+      }
+    }
+
+    // 4. Buzzheavier
+    const buzzMatch = url.match(/buzzheavier\.com\/(?:f\/)?([a-zA-Z0-9_-]+)/i);
+    if (buzzMatch || hostLower.includes("buzzheavier") || hostLower.includes("buzz")) {
+      const fileId = buzzMatch ? buzzMatch[1] : null;
+      if (fileId) {
+        try {
+          const res = await fetch(`https://buzzheavier.com/api/file/${encodeURIComponent(fileId)}`, {
+            signal: AbortSignal.timeout(7000),
+          });
+          if (res.status === 404) {
+            return { status: "dead", message: "Fichier supprimé (Buzzheavier)" };
+          }
+          if (res.ok) {
+            const data = await res.json();
+            if (data && (data.id || data.name || data.size)) {
+              return { status: "alive", message: "Fichier disponible (Buzzheavier)" };
+            }
+          }
+        } catch (e) {}
+      }
+    }
+
+    // 5. 1Fichier
+    if (urlLower.includes("1fichier.com") || hostLower.includes("1fichier")) {
+      try {
+        const res = await fetch(url, {
+          method: "GET",
+          headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" },
+          signal: AbortSignal.timeout(8000),
+        });
+        if (res.status === 404 || res.status === 410) {
+          return { status: "dead", message: "Fichier supprimé (1Fichier)" };
+        }
+        if (res.status === 403 || res.status === 451) {
+          return { status: "blocked", message: "Accès bloqué (1Fichier)" };
+        }
+        const text = await res.text();
+        const lower = text.toLowerCase();
+        if (
+          lower.includes("the requested file has been deleted") ||
+          lower.includes("ce fichier n'existe plus") ||
+          lower.includes("fichier introuvable") ||
+          lower.includes("fichier inexistant") ||
+          lower.includes("the requested file does not exist") ||
+          lower.includes("file not found")
+        ) {
+          return { status: "dead", message: "Fichier supprimé sur 1Fichier" };
+        }
+        if (
+          lower.includes("access to this file is blocked") ||
+          lower.includes("le fichier a été bloqué") ||
+          lower.includes("bloqué suite à une notification")
+        ) {
+          return { status: "blocked", message: "Fichier bloqué sur 1Fichier" };
+        }
+        if (lower.includes("télécharger") || lower.includes("download") || lower.includes("did") || lower.includes("submit") || lower.includes("ok_btn")) {
+          return { status: "alive", message: "Fichier disponible sur 1Fichier" };
+        }
+      } catch (e) {}
+    }
+
+    // 6. MediaFire
+    if (urlLower.includes("mediafire.com") || hostLower.includes("mediafire")) {
+      try {
+        const res = await fetch(url, {
+          headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" },
+          signal: AbortSignal.timeout(8000),
+        });
+        if (res.status === 404 || res.status === 410) {
+          return { status: "dead", message: "Fichier supprimé (MediaFire)" };
+        }
+        const text = await res.text();
+        const lower = text.toLowerCase();
+        if (
+          lower.includes("the file you attempted to download has been removed") ||
+          lower.includes("invalid or deleted file") ||
+          lower.includes("file removed") ||
+          lower.includes("key not found")
+        ) {
+          return { status: "dead", message: "Fichier supprimé sur MediaFire" };
+        }
+        if (lower.includes("dangerous file blocked") || lower.includes("file has been blocked") || lower.includes("violation of our terms of service")) {
+          return { status: "blocked", message: "Fichier bloqué sur MediaFire" };
+        }
+        if (lower.includes("downloadbutton") || lower.includes("aria-label=\"download file\"") || lower.includes("popsok") || lower.includes("download_link") || lower.includes("download (")) {
+          return { status: "alive", message: "Fichier disponible sur MediaFire" };
+        }
+      } catch (e) {}
+    }
+
+    // 7. Mega
+    const megaMatch = url.match(/mega\.(?:nz|co\.nz)\/(?:file\/|#!)(\/)?([a-zA-Z0-9]+)/i);
+    if (megaMatch || hostLower.includes("mega")) {
+      const fileId = megaMatch ? (megaMatch[2] || megaMatch[1]) : null;
+      if (fileId) {
+        try {
+          const res = await fetch("https://g.api.mega.co.nz/cs?id=0", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify([{ a: "g", p: fileId }]),
+            signal: AbortSignal.timeout(7000),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data) && data.length > 0) {
+              const code = data[0];
+              if (code === -9) {
+                return { status: "dead", message: "Fichier supprimé sur Mega" };
+              }
+              if (code === -16) {
+                return { status: "blocked", message: "Fichier bloqué (DMCA) sur Mega" };
+              }
+              if (typeof code === "object" && code !== null && (code.s !== undefined || code.at !== undefined)) {
+                return { status: "alive", message: "Fichier disponible sur Mega" };
+              }
+            }
+          }
+        } catch (e) {}
+      }
+    }
+
+    // 8. MegaUp
+    if (urlLower.includes("megaup.net") || hostLower.includes("megaup")) {
+      try {
+        const res = await fetch(url, {
+          method: "GET",
+          headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" },
+          signal: AbortSignal.timeout(8000),
+        });
+        if (res.status === 404 || res.status === 410) {
+          return { status: "dead", message: "Fichier supprimé (MegaUp)" };
+        }
+        if (res.status === 403 || res.status === 451) {
+          return { status: "blocked", message: "Accès bloqué (MegaUp)" };
+        }
+        const text = await res.text();
+        const lower = text.toLowerCase();
+        if (
+          lower.includes("the file you are looking for does not exist") ||
+          lower.includes("file does not exist") ||
+          lower.includes("file was deleted") ||
+          lower.includes("file not found")
+        ) {
+          return { status: "dead", message: "Fichier supprimé sur MegaUp" };
+        }
+        if (
+          lower.includes("blocked due to a copyright infringement") ||
+          lower.includes("file has been disabled") ||
+          lower.includes("file has been blocked")
+        ) {
+          return { status: "blocked", message: "Fichier bloqué sur MegaUp" };
+        }
+        if (
+          lower.includes("btn-download") ||
+          lower.includes("download now") ||
+          lower.includes("download-timer") ||
+          lower.includes("countdown") ||
+          lower.includes("megaup") ||
+          res.ok
+        ) {
+          return { status: "alive", message: "Fichier disponible sur MegaUp" };
+        }
+      } catch (e) {}
+    }
+
+    // 9. Fallback générique HTTP / HTTPS (DataNodes, SendCM, MultiUp, Rootz, Bowfile, etc.)
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+      try {
+        const res = await fetch(url, {
+          method: "GET",
+          headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" },
+          signal: AbortSignal.timeout(7000),
+        });
+
+        if (res.status === 404 || res.status === 410) {
+          return { status: "dead", message: `Fichier introuvable / supprimé (HTTP ${res.status})` };
+        }
+        if (res.status === 403 || res.status === 451) {
+          return { status: "blocked", message: `Accès bloqué ou restreint (HTTP ${res.status})` };
+        }
+
+        if (res.ok) {
+          const text = await res.text();
+          const lower = (text || "").slice(0, 80000).toLowerCase();
+
+          const deadKeywords = [
+            "file not found",
+            "file has been deleted",
+            "file was deleted",
+            "file does not exist",
+            "file removed",
+            "no such file",
+            "fichier supprimé",
+            "fichier introuvable",
+            "fichier n'existe pas",
+            "fichier inexistant",
+            "404 not found",
+            "link has expired",
+            "lien expiré",
+            "file is no longer available",
+            "the file expired",
+            "download not found"
+          ];
+
+          const blockedKeywords = [
+            "file has been blocked",
+            "file is blocked",
+            "blocked due to copyright",
+            "blocked due to a copyright",
+            "infringement notification",
+            "bloqué pour violation",
+            "bloqué suite à une notification",
+            "account suspended for copyright",
+            "disabled due to copyright"
+          ];
+
+          for (const kw of blockedKeywords) {
+            if (lower.includes(kw)) {
+              return { status: "blocked", message: `Fichier bloqué (${kw})` };
+            }
+          }
+
+          for (const kw of deadKeywords) {
+            if (lower.includes(kw)) {
+              return { status: "dead", message: `Fichier supprimé (${kw})` };
+            }
+          }
+
+          return { status: "alive", message: "Fichier disponible" };
+        }
+      } catch (err) {
+        return { status: "unknown", message: "Vérification indisponible" };
+      }
+    }
+
+    return { status: "unknown", message: "Protocole non supporté" };
+  } catch (e) {
+    return { status: "unknown", message: e.message || "Erreur inconnue" };
+  }
+}
+
 
 

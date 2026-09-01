@@ -146,7 +146,14 @@ html.lgsp-skidrow-listing #footer-wrap {
 
 /* --- Carte de jeu ---------------------------------------------------- */
 
-html.lgsp-skidrow-listing #overall-container .post {
+html.lgsp-skidrow-listing #overall-container .post,
+html.lgsp-skidrow-listing .post {
+    width: 100% !important;
+    max-width: none !important;
+    float: none !important;
+    box-sizing: border-box !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
     background: var(--lgsp-sr-bg) !important;
     border: 1px solid var(--lgsp-sr-border) !important;
     border-radius: 12px !important;
@@ -162,7 +169,8 @@ html.lgsp-skidrow-listing #overall-container .post {
     margin-bottom: 8px !important;
 }
 
-html.lgsp-skidrow-listing #overall-container .post:hover {
+html.lgsp-skidrow-listing #overall-container .post:hover,
+html.lgsp-skidrow-listing .post:hover {
     border-color: var(--lgsp-sr-border-strong) !important;
 }
 
@@ -2454,6 +2462,64 @@ div[style*="z-index: 999999"]:not(.lgsp-lightbox-overlay):not(#lgsp-steam-sync-n
     box-shadow: 0 4px 14px rgba(245, 158, 11, 0.25);
 }
 
+/* Statut de disponibilité des liens de téléchargement favoris */
+.lgsp-dl-status-badge {
+    font-size: 0.80em !important;
+    padding: 2px 4px !important;
+    border-radius: 4px !important;
+    line-height: 1 !important;
+    flex-shrink: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 20px !important;
+    height: 18px !important;
+    box-sizing: border-box !important;
+    user-select: none !important;
+    transition: all 0.2s ease !important;
+}
+
+.lgsp-dl-status-checking {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+.lgsp-dl-status-alive {
+    background: rgba(34, 197, 94, 0.2) !important;
+    border: 1px solid rgba(34, 197, 94, 0.45) !important;
+}
+
+.lgsp-dl-status-dead {
+    background: rgba(239, 68, 68, 0.25) !important;
+    border: 1px solid rgba(239, 68, 68, 0.55) !important;
+}
+
+.lgsp-dl-status-blocked {
+    background: rgba(249, 115, 22, 0.25) !important;
+    border: 1px solid rgba(249, 115, 22, 0.55) !important;
+}
+
+/* Effets sur les cartes selon le statut */
+.lgsp-dl-card.lgsp-dl-state-dead {
+    opacity: 0.65 !important;
+    border-color: rgba(239, 68, 68, 0.45) !important;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(0, 0, 0, 0.3)) !important;
+}
+
+.lgsp-dl-card.lgsp-dl-state-dead .lgsp-dl-host-pill {
+    text-decoration: line-through !important;
+    opacity: 0.8 !important;
+}
+
+.lgsp-dl-card.lgsp-dl-state-blocked {
+    border-color: rgba(249, 115, 22, 0.5) !important;
+    background: linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(0, 0, 0, 0.3)) !important;
+}
+
+.lgsp-dl-card.lgsp-dl-state-alive {
+    border-color: rgba(34, 197, 94, 0.4) !important;
+}
+
 /* Thèmes par hébergeur */
 .lgsp-host-mega .lgsp-dl-host-pill {
     background: rgba(239, 68, 68, 0.2);
@@ -2537,4 +2603,323 @@ div[style*="z-index: 999999"]:not(.lgsp-lightbox-overlay):not(#lgsp-steam-sync-n
     background: rgba(148, 163, 184, 0.2);
     color: #cbd5e1;
     border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+/* =====================================================================
+   FOND D'ÉCRAN PERSONNALISÉ (Images, Vidéos, YouTube, HTML)
+   ===================================================================== */
+#lgsp-custom-bg-root {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 0 !important;
+    overflow: hidden !important;
+    pointer-events: none !important;
+    background-color: #0b0c0e !important;
+}
+
+.lgsp-custom-bg-media {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
+    pointer-events: none !important;
+    transition: filter 0.2s ease;
+}
+
+.lgsp-custom-bg-image {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    object-position: center center !important;
+    display: block !important;
+}
+
+.lgsp-custom-bg-video {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    object-position: center center !important;
+    display: block !important;
+}
+
+.lgsp-custom-bg-youtube {
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    width: 100vw !important;
+    height: 56.25vw !important;
+    min-height: 100vh !important;
+    min-width: 177.77vh !important;
+    transform: translate(-50%, -50%) !important;
+    border: none !important;
+    pointer-events: none !important;
+}
+
+.lgsp-custom-bg-html {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    border: none !important;
+    pointer-events: none !important;
+}
+
+.lgsp-custom-bg-color {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    pointer-events: none !important;
+}
+
+.lgsp-custom-bg-overlay {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    pointer-events: none !important;
+    transition: background-color 0.2s ease;
+}
+
+/* Transparence absolue du fond de page quand un fond personnalisé est actif */
+html.lgsp-has-custom-bg {
+    --lgsp-sr-page-bg: transparent !important;
+}
+
+html.lgsp-has-custom-bg,
+html.lgsp-has-custom-bg body,
+html.lgsp-has-custom-bg #page-wrap,
+html.lgsp-has-custom-bg #overall-container,
+html.lgsp-has-custom-bg #main-content,
+html.lgsp-has-custom-bg #main,
+html.lgsp-has-custom-bg .tm-page,
+html.lgsp-has-custom-bg .uk-container,
+html.lgsp-has-custom-bg .container-main-post,
+html.lgsp-skidrow-listing.lgsp-has-custom-bg,
+html.lgsp-skidrow-listing.lgsp-has-custom-bg body,
+html.lgsp-skidrow-listing.lgsp-has-custom-bg #page-wrap,
+html.lgsp-skidrow-listing.lgsp-has-custom-bg #overall-container,
+html.lgsp-skidrow-listing.lgsp-has-custom-bg #main-content {
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+}
+
+/* S'assurer que le contenu du site se place au-dessus du fond d'écran (z-index: 1) */
+html.lgsp-has-custom-bg #page-wrap,
+html.lgsp-has-custom-bg .tm-page {
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+/* =====================================================================
+   GLASSMORPHISME UNIVERSEL SUR TOUS LES ÉLÉMENTS VISIBLES
+   ===================================================================== */
+
+/* 1. Cartes de jeux (Post Cards) */
+html.lgsp-skidrow-listing.lgsp-has-custom-bg #overall-container .post,
+html.lgsp-skidrow-listing.lgsp-has-custom-bg .post,
+html.lgsp-has-custom-bg .lgsp-card,
+html.lgsp-has-custom-bg .uk-article {
+    background: rgba(18, 21, 28, var(--lgsp-glass-opacity, 0.65)) !important;
+    backdrop-filter: blur(var(--lgsp-glass-blur, 20px)) saturate(var(--lgsp-glass-saturate, 180%)) !important;
+    -webkit-backdrop-filter: blur(var(--lgsp-glass-blur, 20px)) saturate(var(--lgsp-glass-saturate, 180%)) !important;
+    border: 1px solid rgba(255, 255, 255, var(--lgsp-glass-border-opacity, 0.14)) !important;
+    box-shadow: 0 12px 40px 0 rgba(0, 0, 0, var(--lgsp-glass-shadow-opacity, 0.45)), inset 0 1px 0 0 rgba(255, 255, 255, 0.12) !important;
+    border-radius: 14px !important;
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s ease, background-color 0.2s ease !important;
+}
+
+html.lgsp-skidrow-listing.lgsp-has-custom-bg #overall-container .post:hover,
+html.lgsp-skidrow-listing.lgsp-has-custom-bg .post:hover,
+html.lgsp-has-custom-bg .lgsp-card:hover {
+    background: rgba(23, 27, 36, var(--lgsp-glass-hover-opacity, 0.75)) !important;
+    border-color: rgba(207, 159, 79, 0.45) !important;
+    box-shadow: 0 18px 48px 0 rgba(0, 0, 0, var(--lgsp-glass-shadow-opacity, 0.55)), 0 0 24px rgba(207, 159, 79, 0.2), inset 0 1px 0 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+/* 2. En-tête (Header), Navigation & Menu */
+html.lgsp-skidrow-listing.lgsp-has-custom-bg #header,
+html.lgsp-skidrow-listing.lgsp-has-custom-bg #header-wrap,
+html.lgsp-skidrow-listing.lgsp-has-custom-bg #nav {
+    background: rgba(14, 16, 22, var(--lgsp-glass-opacity, 0.72)) !important;
+    backdrop-filter: blur(var(--lgsp-glass-blur, 24px)) saturate(var(--lgsp-glass-saturate, 190%)) !important;
+    -webkit-backdrop-filter: blur(var(--lgsp-glass-blur, 24px)) saturate(var(--lgsp-glass-saturate, 190%)) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, var(--lgsp-glass-border-opacity, 0.12)) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, var(--lgsp-glass-shadow-opacity, 0.35)), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+html.lgsp-skidrow-listing.lgsp-has-custom-bg #header #nav ul#menu-menu > li > a {
+    background: rgba(255, 255, 255, 0.06) !important;
+    backdrop-filter: blur(var(--lgsp-glass-blur, 10px)) !important;
+    -webkit-backdrop-filter: blur(var(--lgsp-glass-blur, 10px)) !important;
+    border: 1px solid rgba(255, 255, 255, var(--lgsp-glass-border-opacity, 0.08)) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+    transition: all 0.15s ease !important;
+}
+
+html.lgsp-skidrow-listing.lgsp-has-custom-bg #header #nav ul#menu-menu > li > a:hover {
+    background: rgba(207, 159, 79, 0.22) !important;
+    border-color: rgba(207, 159, 79, 0.5) !important;
+    color: #cf9f4f !important;
+    box-shadow: 0 0 12px rgba(207, 159, 79, 0.3) !important;
+}
+
+/* 3. Barre de recherche (Search Bar Widget) */
+html.lgsp-skidrow-listing.lgsp-has-custom-bg #search-1 #searchbar {
+    background: rgba(18, 21, 28, var(--lgsp-glass-opacity, 0.65)) !important;
+    backdrop-filter: blur(var(--lgsp-glass-blur, 20px)) saturate(var(--lgsp-glass-saturate, 180%)) !important;
+    -webkit-backdrop-filter: blur(var(--lgsp-glass-blur, 20px)) saturate(var(--lgsp-glass-saturate, 180%)) !important;
+    border: 1px solid rgba(255, 255, 255, var(--lgsp-glass-border-opacity, 0.15)) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, var(--lgsp-glass-shadow-opacity, 0.35)), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+}
+
+html.lgsp-skidrow-listing.lgsp-has-custom-bg #search-1 #searchbar:focus {
+    background: rgba(23, 27, 36, var(--lgsp-glass-hover-opacity, 0.8)) !important;
+    border-color: #cf9f4f !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, var(--lgsp-glass-shadow-opacity, 0.45)), 0 0 18px rgba(207, 159, 79, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+}
+
+html.lgsp-skidrow-listing.lgsp-has-custom-bg #search-1 #lgsp-search-btn {
+    background: rgba(207, 159, 79, var(--lgsp-glass-opacity, 0.85)) !important;
+    backdrop-filter: blur(var(--lgsp-glass-blur, 12px)) !important;
+    -webkit-backdrop-filter: blur(var(--lgsp-glass-blur, 12px)) !important;
+    border: 1px solid rgba(255, 255, 255, 0.25) !important;
+    box-shadow: 0 6px 20px rgba(207, 159, 79, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+}
+
+/* 4. Pagination flottante (.wp-pagenavi) */
+html.lgsp-skidrow-listing.lgsp-has-custom-bg .wp-pagenavi {
+    background: rgba(14, 16, 22, var(--lgsp-glass-opacity, 0.75)) !important;
+    backdrop-filter: blur(var(--lgsp-glass-blur, 20px)) saturate(var(--lgsp-glass-saturate, 180%)) !important;
+    -webkit-backdrop-filter: blur(var(--lgsp-glass-blur, 20px)) saturate(var(--lgsp-glass-saturate, 180%)) !important;
+    border: 1px solid rgba(255, 255, 255, var(--lgsp-glass-border-opacity, 0.14)) !important;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, var(--lgsp-glass-shadow-opacity, 0.45)), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+    border-radius: 14px !important;
+}
+
+html.lgsp-skidrow-listing.lgsp-has-custom-bg .wp-pagenavi a,
+html.lgsp-skidrow-listing.lgsp-has-custom-bg .wp-pagenavi span {
+    background: rgba(255, 255, 255, 0.06) !important;
+    backdrop-filter: blur(var(--lgsp-glass-blur, 10px)) !important;
+    -webkit-backdrop-filter: blur(var(--lgsp-glass-blur, 10px)) !important;
+    border: 1px solid rgba(255, 255, 255, var(--lgsp-glass-border-opacity, 0.1)) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+}
+
+html.lgsp-skidrow-listing.lgsp-has-custom-bg .wp-pagenavi a:hover {
+    background: rgba(207, 159, 79, 0.25) !important;
+    border-color: rgba(207, 159, 79, 0.5) !important;
+    color: #cf9f4f !important;
+    box-shadow: 0 0 12px rgba(207, 159, 79, 0.35) !important;
+}
+
+html.lgsp-skidrow-listing.lgsp-has-custom-bg .wp-pagenavi span.current {
+    background: rgba(207, 159, 79, var(--lgsp-glass-opacity, 0.88)) !important;
+    color: #14161d !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+    box-shadow: 0 0 14px rgba(207, 159, 79, 0.5) !important;
+}
+
+/* 5. Boîte de configuration PC requise & Comparateur */
+html.lgsp-has-custom-bg .lgsp-pc-compare-box,
+html.lgsp-has-custom-bg .lgsp-req-card,
+html.lgsp-has-custom-bg .lgsp-info-box,
+html.lgsp-has-custom-bg .lgsp-req-table-wrapper {
+    background: rgba(14, 17, 24, var(--lgsp-glass-opacity, 0.65)) !important;
+    backdrop-filter: blur(var(--lgsp-glass-blur, 18px)) saturate(var(--lgsp-glass-saturate, 170%)) !important;
+    -webkit-backdrop-filter: blur(var(--lgsp-glass-blur, 18px)) saturate(var(--lgsp-glass-saturate, 170%)) !important;
+    border: 1px solid rgba(255, 255, 255, var(--lgsp-glass-border-opacity, 0.12)) !important;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, var(--lgsp-glass-shadow-opacity, 0.35)), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+    border-radius: 12px !important;
+}
+
+/* 6. Menus déroulants de téléchargement (Download Dropdowns) */
+html.lgsp-has-custom-bg .lgsp-dl-dropdown-menu,
+html.lgsp-has-custom-bg .lgsp-downloads-panel {
+    background: rgba(16, 19, 27, var(--lgsp-glass-opacity, 0.82)) !important;
+    backdrop-filter: blur(var(--lgsp-glass-blur, 24px)) saturate(var(--lgsp-glass-saturate, 190%)) !important;
+    -webkit-backdrop-filter: blur(var(--lgsp-glass-blur, 24px)) saturate(var(--lgsp-glass-saturate, 190%)) !important;
+    border: 1px solid rgba(255, 255, 255, var(--lgsp-glass-border-opacity, 0.16)) !important;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, var(--lgsp-glass-shadow-opacity, 0.6)), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+    border-radius: 12px !important;
+}
+
+html.lgsp-has-custom-bg .lgsp-dl-btn,
+html.lgsp-has-custom-bg .lgsp-host-btn,
+html.lgsp-has-custom-bg .lgsp-dl-host-pill {
+    background: rgba(255, 255, 255, 0.08) !important;
+    backdrop-filter: blur(var(--lgsp-glass-blur, 10px)) !important;
+    -webkit-backdrop-filter: blur(var(--lgsp-glass-blur, 10px)) !important;
+    border: 1px solid rgba(255, 255, 255, var(--lgsp-glass-border-opacity, 0.12)) !important;
+    border-radius: 8px !important;
+}
+
+/* 7. Flèches de navigation de la galerie (Gallery Arrows) & Badges */
+html.lgsp-has-custom-bg .lgsp-arrow-btn,
+html.lgsp-has-custom-bg .lgsp-arrow-prev,
+html.lgsp-has-custom-bg .lgsp-arrow-next {
+    background: rgba(16, 18, 26, var(--lgsp-glass-opacity, 0.68)) !important;
+    backdrop-filter: blur(var(--lgsp-glass-blur, 16px)) saturate(var(--lgsp-glass-saturate, 180%)) !important;
+    -webkit-backdrop-filter: blur(var(--lgsp-glass-blur, 16px)) saturate(var(--lgsp-glass-saturate, 180%)) !important;
+    border: 1px solid rgba(255, 255, 255, var(--lgsp-glass-border-opacity, 0.16)) !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, var(--lgsp-glass-shadow-opacity, 0.4)), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+}
+
+html.lgsp-has-custom-bg .lgsp-gallery-video span,
+html.lgsp-has-custom-bg .lgsp-steam-status-tag,
+html.lgsp-has-custom-bg .lgsp-steam-badge {
+    background: rgba(14, 18, 28, var(--lgsp-glass-opacity, 0.72)) !important;
+    backdrop-filter: blur(var(--lgsp-glass-blur, 14px)) !important;
+    -webkit-backdrop-filter: blur(var(--lgsp-glass-blur, 14px)) !important;
+    border: 1px solid rgba(255, 255, 255, var(--lgsp-glass-border-opacity, 0.14)) !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* 8. Séparateurs de page (Infinite Scroll Page Badges) */
+html.lgsp-has-custom-bg .lgsp-page-separator-badge {
+    background: rgba(16, 19, 27, var(--lgsp-glass-opacity, 0.78)) !important;
+    backdrop-filter: blur(var(--lgsp-glass-blur, 18px)) saturate(var(--lgsp-glass-saturate, 180%)) !important;
+    -webkit-backdrop-filter: blur(var(--lgsp-glass-blur, 18px)) saturate(var(--lgsp-glass-saturate, 180%)) !important;
+    border: 1px solid rgba(255, 255, 255, var(--lgsp-glass-border-opacity, 0.15)) !important;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, var(--lgsp-glass-shadow-opacity, 0.45)), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+}
+
+/* 9. Pied de page (Footer) */
+html.lgsp-skidrow-listing.lgsp-has-custom-bg #footer,
+html.lgsp-skidrow-listing.lgsp-has-custom-bg #footer-wrap {
+    background: rgba(14, 16, 22, var(--lgsp-glass-opacity, 0.72)) !important;
+    backdrop-filter: blur(var(--lgsp-glass-blur, 24px)) saturate(var(--lgsp-glass-saturate, 190%)) !important;
+    -webkit-backdrop-filter: blur(var(--lgsp-glass-blur, 24px)) saturate(var(--lgsp-glass-saturate, 190%)) !important;
+    border-top: 1px solid rgba(255, 255, 255, var(--lgsp-glass-border-opacity, 0.12)) !important;
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, var(--lgsp-glass-shadow-opacity, 0.35)), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+/* 10. Visionneuse Lightbox (Fullscreen Preview Modal) */
+html.lgsp-has-custom-bg .lgsp-lightbox-overlay .lgsp-lightbox-inner,
+html.lgsp-has-custom-bg .lgsp-lightbox-content {
+    background: rgba(14, 17, 24, var(--lgsp-glass-opacity, 0.8)) !important;
+    backdrop-filter: blur(var(--lgsp-glass-blur, 28px)) saturate(var(--lgsp-glass-saturate, 190%)) !important;
+    -webkit-backdrop-filter: blur(var(--lgsp-glass-blur, 28px)) saturate(var(--lgsp-glass-saturate, 190%)) !important;
+    border: 1px solid rgba(255, 255, 255, var(--lgsp-glass-border-opacity, 0.16)) !important;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, var(--lgsp-glass-shadow-opacity, 0.65)), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
 }

@@ -29,11 +29,29 @@
 
     <div class="site-links" id="siteLinks"></div>
 
-    <p class="site-label" id="siteLabel"></p>
+    <div class="site-header-row">
+      <p class="site-label" id="siteLabel"></p>
+      <span id="siteStatusBadge" class="site-status-badge">Actif</span>
+    </div>
+
+    <!-- CARTE D'ACTIVATION / DÉSACTIVATION DU SITE ACTIF -->
+    <div id="siteToggleCard" class="site-toggle-card">
+      <div class="site-toggle-info">
+        <span class="site-toggle-title">Extension active</span>
+        <span class="site-toggle-desc" id="siteToggleDesc">Aperçu, filtres et captures</span>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="siteEnabledToggle" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
 
     <div id="unsupported" class="unsupported" hidden>
-      Ouvrez une page IGG-Games, PCGamesTorrents ou SkidrowReloaded pour régler
-      les tailles : les réglages sont indépendants pour chaque site.
+      <p class="unsupported-msg">Ouvrez une page IGG-Games, PCGamesTorrents ou SkidrowReloaded pour régler les tailles : les réglages sont indépendants pour chaque site.</p>
+      <div class="unsupported-sites-section">
+        <h2 class="unsupported-sites-title">🌐 Sites pris en charge</h2>
+        <div id="unsupportedSiteToggles" class="site-toggles-list"></div>
+      </div>
     </div>
 
     <div id="fields">
@@ -83,6 +101,135 @@
         <input type="range" id="textScale" min="10" max="200" step="1">
       </div>
 
+      <hr>
+
+      <!-- SECTION FOND D'ÉCRAN PERSONNALISÉ -->
+      <div class="custom-bg-section">
+        <div class="custom-bg-header">
+          <label class="custom-bg-title">🎨 Fond d'écran</label>
+          <span id="bgStatusBadge" class="bg-status-badge">Par défaut</span>
+        </div>
+
+        <!-- Aperçu miniature et suppression si fond actif -->
+        <div id="bgActiveCard" class="bg-active-card" hidden>
+          <div class="bg-preview-wrapper">
+            <div id="bgPreviewThumb" class="bg-preview-thumb"></div>
+            <div class="bg-preview-info">
+              <span id="bgPreviewType" class="bg-preview-type">Image</span>
+              <span id="bgPreviewName" class="bg-preview-name">wallpaper.jpg</span>
+            </div>
+          </div>
+          <button type="button" id="removeBgBtn" class="bg-remove-btn" title="Supprimer le fond">🗑️ Supprimer</button>
+        </div>
+
+        <!-- Onglets de sélection du type de fond -->
+        <div class="bg-type-tabs">
+          <button type="button" class="bg-tab-btn active" data-tab="image">📷 Image</button>
+          <button type="button" class="bg-tab-btn" data-tab="url">🔗 URL</button>
+          <button type="button" class="bg-tab-btn" data-tab="youtube">🎥 YouTube</button>
+          <button type="button" class="bg-tab-btn" data-tab="video">🎬 Vidéo</button>
+          <button type="button" class="bg-tab-btn" data-tab="html">💻 HTML</button>
+          <button type="button" class="bg-tab-btn" data-tab="color">🎨 Couleur</button>
+        </div>
+
+        <!-- Panneaux d'entrée par onglet -->
+        <!-- 1. Onglet Image (Upload local) -->
+        <div id="bgTabPane-image" class="bg-tab-pane active">
+          <label class="bg-upload-dropzone" for="bgFileInput">
+            <span class="bg-upload-icon">📁</span>
+            <span class="bg-upload-text">Choisir une image (JPG, PNG, WebP, GIF)</span>
+            <input type="file" id="bgFileInput" accept="image/*" style="display:none">
+          </label>
+        </div>
+
+        <!-- 2. Onglet URL Web (Image ou flux vidéo) -->
+        <div id="bgTabPane-url" class="bg-tab-pane" hidden>
+          <div class="bg-input-row">
+            <input type="url" id="bgUrlInput" placeholder="https://.../image.jpg ou .mp4">
+            <button type="button" id="applyBgUrlBtn">OK</button>
+          </div>
+        </div>
+
+        <!-- 3. Onglet YouTube (Lien vidéo) -->
+        <div id="bgTabPane-youtube" class="bg-tab-pane" hidden>
+          <div class="bg-input-row">
+            <input type="text" id="bgYoutubeInput" placeholder="https://youtu.be/... ou URL YouTube">
+            <button type="button" id="applyBgYoutubeBtn">OK</button>
+          </div>
+          <small class="field-hint">Lecture automatique en boucle et muette.</small>
+        </div>
+
+        <!-- 4. Onglet Vidéo (Upload fichier local) -->
+        <div id="bgTabPane-video" class="bg-tab-pane" hidden>
+          <label class="bg-upload-dropzone" for="bgVideoFileInput">
+            <span class="bg-upload-icon">🎬</span>
+            <span class="bg-upload-text">Choisir une vidéo (MP4, WebM)</span>
+            <input type="file" id="bgVideoFileInput" accept="video/mp4,video/webm,video/ogg" style="display:none">
+          </label>
+        </div>
+
+        <!-- 5. Onglet HTML (Code ou fichier HTML) -->
+        <div id="bgTabPane-html" class="bg-tab-pane" hidden>
+          <div class="bg-html-actions">
+            <label class="bg-file-mini-btn" for="bgHtmlFileInput">
+              📄 Importer fichier .html
+              <input type="file" id="bgHtmlFileInput" accept=".html,.htm,text/html" style="display:none">
+            </label>
+          </div>
+          <textarea id="bgHtmlInput" rows="2" placeholder="Insérer du code HTML / Canvas..."></textarea>
+          <button type="button" id="applyBgHtmlBtn" class="bg-apply-btn">Appliquer code HTML</button>
+        </div>
+
+        <!-- 6. Onglet Couleur (Couleur unie) -->
+        <div id="bgTabPane-color" class="bg-tab-pane" hidden>
+          <div class="bg-color-row">
+            <input type="color" id="bgColorPicker" value="#121316">
+            <input type="text" id="bgColorTextInput" placeholder="#121316 ou nom" value="#121316">
+            <button type="button" id="applyBgColorBtn">OK</button>
+          </div>
+          <div class="bg-color-presets">
+            <button type="button" class="bg-color-preset-dot" data-color="#0b0c0e" style="background-color:#0b0c0e" title="Graphite"></button>
+            <button type="button" class="bg-color-preset-dot" data-color="#0f172a" style="background-color:#0f172a" title="Bleu nuit"></button>
+            <button type="button" class="bg-color-preset-dot" data-color="#1e1b4b" style="background-color:#1e1b4b" title="Violet profond"></button>
+            <button type="button" class="bg-color-preset-dot" data-color="#064e3b" style="background-color:#064e3b" title="Émeraude"></button>
+            <button type="button" class="bg-color-preset-dot" data-color="#450a0a" style="background-color:#450a0a" title="Bordeaux"></button>
+            <button type="button" class="bg-color-preset-dot" data-color="#2d1b06" style="background-color:#2d1b06" title="Ambre"></button>
+            <button type="button" class="bg-color-preset-dot" data-color="#18181b" style="background-color:#18181b" title="Zinc"></button>
+          </div>
+        </div>
+
+        <!-- Réglages d'ambiance (Opacité du voile sombre, Flou et Glassmorphisme) -->
+        <div class="bg-controls-card">
+          <div class="field" style="margin-bottom: 8px;">
+            <div class="field-label">
+              <label for="bgGlassmorphism">Glassmorphisme</label>
+              <span class="value" id="bgGlassmorphismValue">70%</span>
+            </div>
+            <input type="range" id="bgGlassmorphism" min="0" max="100" step="1" value="70">
+          </div>
+
+          <div class="field" style="margin-bottom: 8px;">
+            <div class="field-label">
+              <label for="bgOverlayOpacity">Assombrissement</label>
+              <span class="value" id="bgOverlayOpacityValue">40%</span>
+            </div>
+            <input type="range" id="bgOverlayOpacity" min="0" max="95" step="1" value="40">
+          </div>
+
+          <div class="field" style="margin-bottom: 0;">
+            <div class="field-label">
+              <label for="bgBlur">Flou d'arrière-plan</label>
+              <span class="value" id="bgBlurValue">0px</span>
+            </div>
+            <input type="range" id="bgBlur" min="0" max="25" step="1" value="0">
+          </div>
+        </div>
+
+        <div id="bgStatusMsg" class="bg-status-msg" hidden></div>
+      </div>
+
+      <hr>
+
       <button id="resetBtn">Réinitialiser les réglages</button>
     </div>
   </div>
@@ -101,6 +248,124 @@
       <button type="button" id="steamOpenGamesBtn" class="steam-open-btn">🎮 Ouvrir ma page de jeux Steam</button>
 
       <div id="steamStatus" class="steam-status" hidden></div>
+    </div>
+
+    <!-- SECTION MATÉRIEL / CONFIGURATION PC -->
+    <div class="hardware-section">
+      <div class="hardware-section-header">
+        <h2>🖥️ Configuration PC</h2>
+        <span id="hwStatusBadge" class="hw-status-badge">Auto</span>
+      </div>
+      <p class="hw-help">Personnalisez votre matériel pour le comparateur (si Brave ou votre navigateur masque vos vrais composants).</p>
+
+      <div class="hw-toggle-card">
+        <div class="hw-toggle-info">
+          <span class="hw-toggle-title">Configuration manuelle</span>
+          <span class="hw-toggle-desc" id="hwToggleDesc">Ignorer la détection automatique</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="customHwToggle">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div id="hwCustomFields" class="hw-custom-fields" hidden>
+        <div class="field">
+          <div class="field-label">
+            <label for="hwGpuInput">Carte graphique (GPU)</label>
+          </div>
+          <input type="text" id="hwGpuInput" placeholder="Ex: NVIDIA GeForce GTX 1070">
+          <small class="field-hint">Modèle (RTX 4070, GTX 1070, RX 6700, etc.)</small>
+        </div>
+
+        <div class="field">
+          <div class="field-label">
+            <label for="hwVramSelect">Mémoire Vidéo GPU (VRAM)</label>
+            <span class="value" id="hwVramValue">8 Go</span>
+          </div>
+          <select id="hwVramSelect" class="hw-select">
+            <option value="1">1 Go</option>
+            <option value="2">2 Go</option>
+            <option value="3">3 Go</option>
+            <option value="4">4 Go</option>
+            <option value="6">6 Go</option>
+            <option value="8" selected>8 Go</option>
+            <option value="10">10 Go</option>
+            <option value="12">12 Go</option>
+            <option value="16">16 Go</option>
+            <option value="20">20 Go</option>
+            <option value="24">24 Go</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="field-label">
+            <label for="hwRamSelect">Mémoire vive (RAM)</label>
+            <span class="value" id="hwRamValue">16 Go</span>
+          </div>
+          <select id="hwRamSelect" class="hw-select">
+            <option value="2">2 Go</option>
+            <option value="4">4 Go</option>
+            <option value="6">6 Go</option>
+            <option value="8">8 Go</option>
+            <option value="12">12 Go</option>
+            <option value="16" selected>16 Go</option>
+            <option value="24">24 Go</option>
+            <option value="32">32 Go</option>
+            <option value="48">48 Go</option>
+            <option value="64">64 Go</option>
+            <option value="128">128 Go</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="field-label">
+            <label for="hwCoresSelect">Processeur (Cœurs CPU)</label>
+            <span class="value" id="hwCoresValue">8 cœurs</span>
+          </div>
+          <select id="hwCoresSelect" class="hw-select">
+            <option value="2">2 cœurs (Dual-core)</option>
+            <option value="4">4 cœurs (Quad-core)</option>
+            <option value="6">6 cœurs (Hexa-core)</option>
+            <option value="8" selected>8 cœurs (Octa-core)</option>
+            <option value="10">10 cœurs</option>
+            <option value="12">12 cœurs</option>
+            <option value="14">14 cœurs</option>
+            <option value="16">16 cœurs</option>
+            <option value="24">24 cœurs</option>
+            <option value="32">32 cœurs</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="field-label">
+            <label for="hwGhzSelect">Fréquence CPU (GHz)</label>
+            <span class="value" id="hwGhzValue">3.6 GHz</span>
+          </div>
+          <select id="hwGhzSelect" class="hw-select">
+            <option value="1.8">1.8 GHz</option>
+            <option value="2.0">2.0 GHz</option>
+            <option value="2.5">2.5 GHz</option>
+            <option value="2.8">2.8 GHz</option>
+            <option value="3.0">3.0 GHz</option>
+            <option value="3.2">3.2 GHz</option>
+            <option value="3.4">3.4 GHz</option>
+            <option value="3.6" selected>3.6 GHz</option>
+            <option value="3.8">3.8 GHz</option>
+            <option value="4.0">4.0 GHz</option>
+            <option value="4.2">4.2 GHz</option>
+            <option value="4.5">4.5 GHz</option>
+            <option value="5.0">5.0 GHz</option>
+          </select>
+        </div>
+
+        <div class="hw-btn-row">
+          <button type="button" id="saveHwBtn" class="hw-save-btn">💾 Enregistrer</button>
+          <button type="button" id="detectHwBtn" class="hw-detect-btn" title="Récupérer le matériel détecté par le navigateur">🔍 Auto-détecter</button>
+        </div>
+      </div>
+
+      <div id="hwStatusMsg" class="hw-status-msg" hidden></div>
     </div>
 
     <!-- SECTION GESTION DU CACHE -->
@@ -127,7 +392,7 @@
           <label for="cacheMaxMb">Limite de taille max</label>
           <span class="value" id="cacheMaxMbValue">25 Mo</span>
         </div>
-        <input type="range" id="cacheMaxMb" min="5" max="200" step="5" value="25">
+        <input type="range" id="cacheMaxMb" min="5" max="200" step="1" value="25">
         <small class="field-hint">Écrase automatiquement les éléments les plus anciens et les moins utilisés (LRU).</small>
       </div>
 
@@ -142,6 +407,15 @@
 
       <button type="button" id="clearCacheBtn" class="clear-cache-btn">🗑️ Vider tout le cache</button>
       <div id="cacheStatusMsg" class="cache-status-msg" hidden></div>
+    </div>
+
+    <!-- SECTION GESTION DES SITES PRIS EN CHARGE -->
+    <div class="sites-section">
+      <div class="sites-section-header">
+        <h2>🌐 Sites pris en charge</h2>
+      </div>
+      <p class="sites-help">Activez ou désactivez l'extension individuellement pour chaque site :</p>
+      <div id="settingsSiteToggles" class="site-toggles-list"></div>
     </div>
 
     <div class="about-section">
@@ -159,8 +433,20 @@
     </div>
   </div>
 
+  <!-- Indicateurs discrets de défilement haut / bas -->
+  <div id="scrollIndicatorTop" class="scroll-indicator scroll-indicator-top" title="Haut de page">
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="18 15 12 9 6 15"></polyline>
+    </svg>
+  </div>
+  <div id="scrollIndicatorBottom" class="scroll-indicator scroll-indicator-bottom" title="Bas de page">
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="6 9 12 15 18 9"></polyline>
+    </svg>
+  </div>
+
   <div class="popup-footer">
-    <span id="extensionVersion">v2026.8.22.1428</span>
+    <span id="extensionVersion">v2026.8.30.1453</span>
     <span class="footer-dot">•</span>
     <button type="button" id="checkUpdateBtn" class="check-update-link">Vérifier màj</button>
     <span id="updateCheckStatus" class="update-check-status"></span>

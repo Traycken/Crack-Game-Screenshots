@@ -2,6 +2,9 @@
 
 Extension pour navigateur permettant d'afficher directement les captures d'écran, vidéos/trailers, configurations requises, comparateur PC, taille des jeux et liens de téléchargement sur divers sites (SkidrowReloaded, IGG-Games, PCGamesTorrents) avec synchronisation Steam.
 
+> [!NOTE]
+> **Compatibilité des sites :** L'extension est principalement conçue et optimisée pour **Skidrow / SkidrowReloaded**. Bien que le support pour **IGG-Games** et **PCGamesTorrents** soit présent, il est possible que certaines fonctionnalités ne soient pas totalement disponibles ou fonctionnelles sur ces deux sites.
+
 ---
 
 ## 📥 Téléchargement
@@ -69,4 +72,5 @@ Pour mettre à jour l'extension manuellement lorsqu'une nouvelle version est dis
   - Tri automatique des meilleurs hébergeurs en tête de liste et gestion des hébergeurs favoris (⭐).
 - ⚙️ **Configurations requises & Comparateur PC** : Vérification immédiate de la compatibilité de votre matériel avec les spécifications minimales et recommandées.
 - 🎮 **Synchronisation Steam** : Badges dynamiques indiquant si le jeu est possédé ou présent dans votre liste de souhaits Steam, avis des joueurs, prix et modes de jeu.
+- 🌐 **Activation / Désactivation par site** : Interrupteur dédié dans le popup pour désactiver ou réactiver l'extension à la volée sur n'importe quel site pris en charge (SkidrowReloaded, IGG-Games, PCGamesTorrents).
 - 🎛️ **Personnalisation complète** : Réglage du nombre de colonnes, de lignes, du nombre maximal de captures, de la largeur d'affichage et de l'échelle des textes via le popup.

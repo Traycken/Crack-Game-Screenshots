@@ -1,11 +1,26 @@
 // Réglages indépendants par site : chaque clé de stockage est préfixée par
 // le nom d'hôte de l'onglet actif (voir keyFor). Le popup n'affiche/ne
 // modifie donc que les réglages du site actuellement ouvert.
+const CANONICAL_HOSTS = {
+  "skidrowreloaded.com": "www.skidrowreloaded.com",
+  "www.skidrowreloaded.com": "www.skidrowreloaded.com",
+  "igg-games.com": "igg-games.com",
+  "www.igg-games.com": "igg-games.com",
+  "pcgamestorrents.com": "pcgamestorrents.com",
+  "www.pcgamestorrents.com": "pcgamestorrents.com",
+};
+
 const SUPPORTED_HOSTS = [
   "www.skidrowreloaded.com",
   "igg-games.com",
   "pcgamestorrents.com",
 ];
+
+function normalizeHost(host) {
+  if (!host) return null;
+  const clean = host.toLowerCase().trim();
+  return CANONICAL_HOSTS[clean] || null;
+}
 
 const SITE_LABELS = {
   "www.skidrowreloaded.com": "SkidrowReloaded",
@@ -55,8 +70,9 @@ const RANGE_FIELDS = ["galleryColumns", "galleryRows", "maxTotalScreenshots", "m
 let currentHost = null;
 
 function keyFor(field) {
+  const host = normalizeHost(currentHost) || currentHost;
   const storageField = field === "maxContentWidth" ? "maxContentWidthPct" : field;
-  return `${currentHost}:${storageField}`;
+  return `${host}:${storageField}`;
 }
 
 function labelFor(field, value) {
@@ -70,6 +86,162 @@ function updateLabel(field, value) {
   if (el) el.textContent = labelFor(field, value);
 }
 
+const BG_DEFAULTS = {
+  overlayOpacity: 40,
+  blur: 0,
+  glassmorphism: 70,
+};
+
+function extractYouTubeId(urlOrId) {
+  if (!urlOrId) return null;
+  const str = urlOrId.trim();
+  if (/^[a-zA-Z0-9_-]{11}$/.test(str)) return str;
+  const match = str.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/i);
+  return match ? match[1] : null;
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Erreur de lecture du fichier"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Erreur de lecture du fichier"));
+    reader.readAsText(file);
+  });
+}
+
+function renderCustomBgUi(bg) {
+  const badge = document.getElementById("bgStatusBadge");
+  const activeCard = document.getElementById("bgActiveCard");
+  const thumb = document.getElementById("bgPreviewThumb");
+  const typeEl = document.getElementById("bgPreviewType");
+  const nameEl = document.getElementById("bgPreviewName");
+  const glassInput = document.getElementById("bgGlassmorphism");
+  const glassVal = document.getElementById("bgGlassmorphismValue");
+  const opacityInput = document.getElementById("bgOverlayOpacity");
+  const opacityVal = document.getElementById("bgOverlayOpacityValue");
+  const blurInput = document.getElementById("bgBlur");
+  const blurVal = document.getElementById("bgBlurValue");
+
+  const glassmorphism = bg && typeof bg.glassmorphism === "number" ? bg.glassmorphism : BG_DEFAULTS.glassmorphism;
+  const overlayOpacity = bg && typeof bg.overlayOpacity === "number" ? bg.overlayOpacity : BG_DEFAULTS.overlayOpacity;
+  const blur = bg && typeof bg.blur === "number" ? bg.blur : BG_DEFAULTS.blur;
+
+  if (glassInput) glassInput.value = glassmorphism;
+  if (glassVal) glassVal.textContent = `${glassmorphism}%`;
+  if (opacityInput) opacityInput.value = overlayOpacity;
+  if (opacityVal) opacityVal.textContent = `${overlayOpacity}%`;
+  if (blurInput) blurInput.value = blur;
+  if (blurVal) blurVal.textContent = `${blur}px`;
+
+  if (!bg || !bg.type) {
+    if (badge) {
+      badge.textContent = "Par défaut";
+      badge.classList.remove("active");
+    }
+    if (activeCard) activeCard.hidden = true;
+    return;
+  }
+
+  if (badge) {
+    badge.textContent = "Actif";
+    badge.classList.add("active");
+  }
+  if (activeCard) activeCard.hidden = false;
+
+  if (typeEl) {
+    const typeNames = {
+      image: "Image",
+      url: "URL",
+      youtube: "YouTube",
+      video: "Vidéo",
+      html: "HTML",
+      color: "Couleur",
+    };
+    typeEl.textContent = typeNames[bg.type] || bg.type;
+  }
+
+  if (nameEl) {
+    nameEl.textContent = bg.rawName || "Fond personnalisé";
+  }
+
+  if (thumb) {
+    thumb.textContent = "";
+    thumb.style.backgroundColor = "transparent";
+    if (bg.type === "image" || bg.type === "url") {
+      thumb.style.backgroundImage = `url("${bg.url}")`;
+    } else if (bg.type === "youtube" && bg.videoId) {
+      thumb.style.backgroundImage = `url("https://img.youtube.com/vi/${bg.videoId}/mqdefault.jpg")`;
+    } else if (bg.type === "video") {
+      thumb.style.backgroundImage = "none";
+      thumb.textContent = "🎬";
+    } else if (bg.type === "html") {
+      thumb.style.backgroundImage = "none";
+      thumb.textContent = "💻";
+    } else if (bg.type === "color") {
+      thumb.style.backgroundImage = "none";
+      thumb.style.backgroundColor = bg.color || "#121316";
+    } else {
+      thumb.style.backgroundImage = "none";
+      thumb.textContent = "🎨";
+    }
+  }
+
+  if (bg && bg.type === "color" && bg.color) {
+    const picker = document.getElementById("bgColorPicker");
+    const textIn = document.getElementById("bgColorTextInput");
+    if (textIn) textIn.value = bg.color;
+    if (picker && /^#[0-9A-Fa-f]{6}$/.test(bg.color)) picker.value = bg.color;
+  }
+}
+
+function showBgStatusMsg(msg, isError = false) {
+  const el = document.getElementById("bgStatusMsg");
+  if (!el) return;
+  el.textContent = msg;
+  el.className = isError ? "bg-status-msg error" : "bg-status-msg";
+  el.hidden = false;
+  setTimeout(() => {
+    if (el.textContent === msg) el.hidden = true;
+  }, 3500);
+}
+
+function saveCustomBg(bgData) {
+  if (!currentHost) return;
+  chrome.storage.local.get([keyFor("customBg")], (res) => {
+    const current = res[keyFor("customBg")] || {};
+    const updated = {
+      ...current,
+      ...bgData,
+      glassmorphism: typeof bgData.glassmorphism === "number" ? bgData.glassmorphism : (typeof current.glassmorphism === "number" ? current.glassmorphism : BG_DEFAULTS.glassmorphism),
+      overlayOpacity: typeof bgData.overlayOpacity === "number" ? bgData.overlayOpacity : (typeof current.overlayOpacity === "number" ? current.overlayOpacity : BG_DEFAULTS.overlayOpacity),
+      blur: typeof bgData.blur === "number" ? bgData.blur : (typeof current.blur === "number" ? current.blur : BG_DEFAULTS.blur),
+      updatedAt: Date.now(),
+    };
+    chrome.storage.local.set({ [keyFor("customBg")]: updated }, () => {
+      renderCustomBgUi(updated);
+      showBgStatusMsg("✅ Fond d'écran appliqué !");
+    });
+  });
+}
+
+function updateBgControls(field, val) {
+  if (!currentHost) return;
+  chrome.storage.local.get([keyFor("customBg")], (res) => {
+    const current = res[keyFor("customBg")] || { overlayOpacity: BG_DEFAULTS.overlayOpacity, blur: BG_DEFAULTS.blur, glassmorphism: BG_DEFAULTS.glassmorphism };
+    current[field] = val;
+    chrome.storage.local.set({ [keyFor("customBg")]: current });
+  });
+}
+
 function loadSettings() {
   const defaults = {
     [keyFor("galleryColumns")]: DEFAULTS.galleryColumns,
@@ -77,6 +249,7 @@ function loadSettings() {
     [keyFor("maxTotalScreenshots")]: DEFAULTS.maxTotalScreenshots,
     [keyFor("maxContentWidth")]: DEFAULTS.maxContentWidth,
     [keyFor("textScale")]: DEFAULTS.textScale,
+    [keyFor("customBg")]: null,
   };
   chrome.storage.local.get(defaults, (settings) => {
     RANGE_FIELDS.forEach((field) => {
@@ -85,11 +258,256 @@ function loadSettings() {
       input.value = value;
       updateLabel(field, value);
     });
+    renderCustomBgUi(settings[keyFor("customBg")]);
   });
 }
 
 function saveField(field, value) {
   chrome.storage.local.set({ [keyFor(field)]: value });
+}
+
+let customBgInitialized = false;
+
+function initCustomBackground() {
+  if (customBgInitialized) return;
+  customBgInitialized = true;
+
+  // Tabs
+  const tabBtns = document.querySelectorAll(".bg-tab-btn");
+  tabBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      tabBtns.forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      const tab = btn.dataset.tab;
+      document.querySelectorAll(".bg-tab-pane").forEach((pane) => {
+        pane.hidden = pane.id !== `bgTabPane-${tab}`;
+      });
+    });
+  });
+
+  // 1. Image upload
+  const fileInput = document.getElementById("bgFileInput");
+  if (fileInput) {
+    fileInput.addEventListener("change", async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      try {
+        const dataUrl = await readFileAsDataUrl(file);
+        saveCustomBg({
+          type: "image",
+          url: dataUrl,
+          rawName: file.name,
+        });
+      } catch (err) {
+        showBgStatusMsg("❌ Erreur lors de la lecture de l'image", true);
+      }
+      fileInput.value = "";
+    });
+  }
+
+  // 2. URL
+  const urlInput = document.getElementById("bgUrlInput");
+  const applyUrlBtn = document.getElementById("applyBgUrlBtn");
+  const handleApplyUrl = () => {
+    const raw = urlInput.value.trim();
+    if (!raw) {
+      showBgStatusMsg("Veuillez saisir une URL valide", true);
+      return;
+    }
+    const ytId = extractYouTubeId(raw);
+    if (ytId) {
+      saveCustomBg({
+        type: "youtube",
+        videoId: ytId,
+        url: `https://www.youtube.com/watch?v=${ytId}`,
+        rawName: `YouTube (${ytId})`,
+      });
+      urlInput.value = "";
+      return;
+    }
+    const isVideo = /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(raw);
+    saveCustomBg({
+      type: isVideo ? "video" : "image",
+      url: raw,
+      rawName: raw.length > 30 ? `${raw.slice(0, 27)}...` : raw,
+    });
+    urlInput.value = "";
+  };
+  if (applyUrlBtn) applyUrlBtn.addEventListener("click", handleApplyUrl);
+  if (urlInput) {
+    urlInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") handleApplyUrl();
+    });
+  }
+
+  // 3. YouTube
+  const ytInput = document.getElementById("bgYoutubeInput");
+  const applyYtBtn = document.getElementById("applyBgYoutubeBtn");
+  const handleApplyYt = () => {
+    const raw = ytInput.value.trim();
+    const ytId = extractYouTubeId(raw);
+    if (!ytId) {
+      showBgStatusMsg("Lien ou identifiant YouTube invalide", true);
+      return;
+    }
+    saveCustomBg({
+      type: "youtube",
+      videoId: ytId,
+      url: `https://www.youtube.com/watch?v=${ytId}`,
+      rawName: `YouTube (${ytId})`,
+    });
+    ytInput.value = "";
+  };
+  if (applyYtBtn) applyYtBtn.addEventListener("click", handleApplyYt);
+  if (ytInput) {
+    ytInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") handleApplyYt();
+    });
+  }
+
+  // 4. Video file upload
+  const videoFileInput = document.getElementById("bgVideoFileInput");
+  if (videoFileInput) {
+    videoFileInput.addEventListener("change", async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      try {
+        const dataUrl = await readFileAsDataUrl(file);
+        saveCustomBg({
+          type: "video",
+          url: dataUrl,
+          rawName: file.name,
+        });
+      } catch (err) {
+        showBgStatusMsg("❌ Erreur lors de la lecture de la vidéo", true);
+      }
+      videoFileInput.value = "";
+    });
+  }
+
+  // 5. HTML code & file
+  const htmlFileInput = document.getElementById("bgHtmlFileInput");
+  const htmlInput = document.getElementById("bgHtmlInput");
+  const applyHtmlBtn = document.getElementById("applyBgHtmlBtn");
+
+  if (htmlFileInput) {
+    htmlFileInput.addEventListener("change", async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      try {
+        const text = await readFileAsText(file);
+        if (htmlInput) htmlInput.value = text;
+        saveCustomBg({
+          type: "html",
+          htmlContent: text,
+          rawName: file.name,
+        });
+      } catch (err) {
+        showBgStatusMsg("❌ Erreur lors de la lecture du fichier HTML", true);
+      }
+      htmlFileInput.value = "";
+    });
+  }
+
+  if (applyHtmlBtn) {
+    applyHtmlBtn.addEventListener("click", () => {
+      const text = htmlInput ? htmlInput.value.trim() : "";
+      if (!text) {
+        showBgStatusMsg("Veuillez saisir du code HTML", true);
+        return;
+      }
+      saveCustomBg({
+        type: "html",
+        htmlContent: text,
+        rawName: "Code HTML personnalisé",
+      });
+    });
+  }
+
+  // 6. Solid Color
+  const colorPicker = document.getElementById("bgColorPicker");
+  const colorTextInput = document.getElementById("bgColorTextInput");
+  const applyColorBtn = document.getElementById("applyBgColorBtn");
+
+  if (colorPicker && colorTextInput) {
+    colorPicker.addEventListener("input", () => {
+      colorTextInput.value = colorPicker.value;
+    });
+    colorTextInput.addEventListener("input", () => {
+      const val = colorTextInput.value.trim();
+      if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+        colorPicker.value = val;
+      }
+    });
+  }
+
+  if (applyColorBtn) {
+    applyColorBtn.addEventListener("click", () => {
+      const colorVal = (colorTextInput ? colorTextInput.value.trim() : "") || (colorPicker ? colorPicker.value : "#121316");
+      saveCustomBg({
+        type: "color",
+        color: colorVal,
+        rawName: `Couleur (${colorVal})`,
+      });
+    });
+  }
+
+  document.querySelectorAll(".bg-color-preset-dot").forEach((dot) => {
+    dot.addEventListener("click", () => {
+      const presetColor = dot.getAttribute("data-color");
+      if (!presetColor) return;
+      if (colorTextInput) colorTextInput.value = presetColor;
+      if (colorPicker && /^#[0-9A-Fa-f]{6}$/.test(presetColor)) colorPicker.value = presetColor;
+      saveCustomBg({
+        type: "color",
+        color: presetColor,
+        rawName: `Couleur (${presetColor})`,
+      });
+    });
+  });
+
+  // Glassmorphism, overlay opacity & blur sliders
+  const glassInput = document.getElementById("bgGlassmorphism");
+  const glassVal = document.getElementById("bgGlassmorphismValue");
+  if (glassInput) {
+    glassInput.addEventListener("input", () => {
+      const val = Number(glassInput.value);
+      if (glassVal) glassVal.textContent = `${val}%`;
+      updateBgControls("glassmorphism", val);
+    });
+  }
+
+  const opacityInput = document.getElementById("bgOverlayOpacity");
+  const opacityVal = document.getElementById("bgOverlayOpacityValue");
+  if (opacityInput) {
+    opacityInput.addEventListener("input", () => {
+      const val = Number(opacityInput.value);
+      if (opacityVal) opacityVal.textContent = `${val}%`;
+      updateBgControls("overlayOpacity", val);
+    });
+  }
+
+  const blurInput = document.getElementById("bgBlur");
+  const blurVal = document.getElementById("bgBlurValue");
+  if (blurInput) {
+    blurInput.addEventListener("input", () => {
+      const val = Number(blurInput.value);
+      if (blurVal) blurVal.textContent = `${val}px`;
+      updateBgControls("blur", val);
+    });
+  }
+
+  // Remove background button
+  const removeBtn = document.getElementById("removeBgBtn");
+  if (removeBtn) {
+    removeBtn.addEventListener("click", () => {
+      if (!currentHost) return;
+      chrome.storage.local.remove([keyFor("customBg")], () => {
+        renderCustomBgUi(null);
+        showBgStatusMsg("Fond d'écran supprimé.");
+      });
+    });
+  }
 }
 
 function attachListeners() {
@@ -104,24 +522,134 @@ function attachListeners() {
 
   document.getElementById("resetBtn").addEventListener("click", () => {
     chrome.storage.local.remove(
-      RANGE_FIELDS.map((field) => keyFor(field)),
-      loadSettings
+      [...RANGE_FIELDS.map((field) => keyFor(field)), keyFor("customBg"), getSiteDisabledKey(currentHost)],
+      () => {
+        loadSettings();
+        loadSiteEnabledState();
+      }
     );
   });
+}
+
+function getSiteDisabledKey(host) {
+  const norm = normalizeHost(host) || host;
+  return `${norm}:disabled`;
+}
+
+function updateCurrentSiteEnabledUi(enabled) {
+  const toggle = document.getElementById("siteEnabledToggle");
+  const fields = document.getElementById("fields");
+  const badge = document.getElementById("siteStatusBadge");
+  const toggleDesc = document.getElementById("siteToggleDesc");
+
+  if (toggle) toggle.checked = enabled;
+  if (fields) fields.hidden = !enabled;
+  if (badge) {
+    badge.textContent = enabled ? "Actif" : "Désactivé";
+    badge.classList.toggle("disabled", !enabled);
+  }
+  if (toggleDesc) {
+    toggleDesc.textContent = enabled ? "Aperçu, filtres et captures actifs" : "Extension en pause sur ce site";
+  }
+}
+
+function loadSiteEnabledState() {
+  if (!currentHost) return;
+  chrome.storage.local.get([getSiteDisabledKey(currentHost)], (res) => {
+    const isDisabled = Boolean(res[getSiteDisabledKey(currentHost)]);
+    updateCurrentSiteEnabledUi(!isDisabled);
+  });
+}
+
+function renderAllSiteToggles(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = "";
+
+  const keys = SUPPORTED_HOSTS.map(getSiteDisabledKey);
+  chrome.storage.local.get(keys, (res) => {
+    SUPPORTED_HOSTS.forEach((host) => {
+      const isDisabled = Boolean(res[getSiteDisabledKey(host)]);
+      const item = document.createElement("div");
+      item.className = "site-toggle-item";
+
+      const toggleId = `${containerId}_toggle_${host.replace(/[^a-z0-9]/gi, "_")}`;
+
+      item.innerHTML = `
+        <div class="site-item-info">
+          <span class="site-item-name">${SITE_LABELS[host] || host}</span>
+          <span class="site-item-host">${host}</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="${toggleId}" ${isDisabled ? "" : "checked"}>
+          <span class="slider"></span>
+        </label>
+      `;
+
+      const input = item.querySelector("input");
+      input.addEventListener("change", () => {
+        const disabled = !input.checked;
+        chrome.storage.local.set({ [getSiteDisabledKey(host)]: disabled }, () => {
+          if (currentHost === host) {
+            updateCurrentSiteEnabledUi(!disabled);
+          }
+          const otherContainerId = containerId === "settingsSiteToggles" ? "unsupportedSiteToggles" : "settingsSiteToggles";
+          const otherInput = document.getElementById(`${otherContainerId}_toggle_${host.replace(/[^a-z0-9]/gi, "_")}`);
+          if (otherInput) otherInput.checked = !disabled;
+        });
+      });
+
+      container.appendChild(item);
+    });
+  });
+}
+
+let siteToggleInitialized = false;
+function initSiteToggle() {
+  if (siteToggleInitialized) return;
+  siteToggleInitialized = true;
+
+  const toggle = document.getElementById("siteEnabledToggle");
+  if (toggle) {
+    toggle.addEventListener("change", () => {
+      if (!currentHost) return;
+      const disabled = !toggle.checked;
+      chrome.storage.local.set({ [getSiteDisabledKey(currentHost)]: disabled }, () => {
+        updateCurrentSiteEnabledUi(!disabled);
+        renderAllSiteToggles("settingsSiteToggles");
+        renderAllSiteToggles("unsupportedSiteToggles");
+      });
+    });
+  }
 }
 
 function showUnsupported() {
   document.getElementById("unsupported").hidden = false;
   document.getElementById("fields").hidden = true;
   document.getElementById("siteLabel").textContent = "";
+
+  const siteCard = document.getElementById("siteToggleCard");
+  if (siteCard) siteCard.hidden = true;
+  const badge = document.getElementById("siteStatusBadge");
+  if (badge) badge.hidden = true;
+
+  renderAllSiteToggles("unsupportedSiteToggles");
+  renderAllSiteToggles("settingsSiteToggles");
 }
 
 function showSite(host) {
   currentHost = host;
   document.getElementById("unsupported").hidden = true;
-  document.getElementById("fields").hidden = false;
+  const siteCard = document.getElementById("siteToggleCard");
+  if (siteCard) siteCard.hidden = false;
+  const badge = document.getElementById("siteStatusBadge");
+  if (badge) badge.hidden = false;
+
   document.getElementById("siteLabel").textContent = SITE_LABELS[host] || host;
+  loadSiteEnabledState();
+  renderAllSiteToggles("settingsSiteToggles");
   attachListeners();
+  initCustomBackground();
   loadSettings();
 }
 
@@ -428,12 +956,14 @@ function initNavigation() {
         headerTitle.textContent = "Paramètres";
         settingsBtn.classList.add("active");
         settingsBtn.title = "Retour aux réglages";
+        renderAllSiteToggles("settingsSiteToggles");
       } else {
         viewMain.hidden = false;
         viewSettings.hidden = true;
         headerTitle.textContent = "Tailles des éléments";
         settingsBtn.classList.remove("active");
         settingsBtn.title = "Paramètres";
+        if (currentHost) loadSiteEnabledState();
       }
     });
   }
@@ -453,13 +983,266 @@ function initNavigation() {
   }
 }
 
+function initScrollIndicators() {
+  const topIndicator = document.getElementById("scrollIndicatorTop");
+  const bottomIndicator = document.getElementById("scrollIndicatorBottom");
+
+  if (!topIndicator || !bottomIndicator) return;
+
+  function updateIndicators() {
+    const scrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    const scrollHeight = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight);
+    const clientHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+
+    const canScrollUp = scrollTop > 12;
+    const canScrollDown = (scrollTop + clientHeight) < (scrollHeight - 16);
+
+    topIndicator.classList.toggle("visible", canScrollUp);
+    bottomIndicator.classList.toggle("visible", canScrollDown);
+  }
+
+  window.addEventListener("scroll", updateIndicators, { passive: true });
+  window.addEventListener("resize", updateIndicators, { passive: true });
+
+  const observer = new MutationObserver(() => {
+    setTimeout(updateIndicators, 60);
+  });
+  observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+
+  topIndicator.addEventListener("click", () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  bottomIndicator.addEventListener("click", () => {
+    window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+  });
+
+  setTimeout(updateIndicators, 120);
+}
+
+function detectBrowserHardware() {
+  let gpu = "Carte graphique standard";
+  try {
+    const canvas = document.createElement("canvas");
+    const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+    if (gl) {
+      const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
+      if (debugInfo) {
+        gpu = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || "";
+      }
+      if (!gpu || gpu === "WebKit WebGL") {
+        gpu = gl.getParameter(gl.RENDERER) || "";
+      }
+    }
+  } catch {}
+
+  let cleanGpu = gpu
+    .replace(/^ANGLE\s*\(([^,]+),\s*/i, "")
+    .replace(/\s*Direct3D.*$/i, "")
+    .replace(/\s*vs_\d+_\d+.*$/i, "")
+    .replace(/\s*\(0x[0-9a-fA-F]+\)$/, "")
+    .replace(/\s*OpenGL.*$/i, "")
+    .trim();
+
+  const ram = navigator.deviceMemory || 8;
+  const cores = navigator.hardwareConcurrency || 4;
+
+  let estimatedVram = 8;
+  const upperGpu = (cleanGpu || gpu).toUpperCase();
+  if (upperGpu.includes("4090") || upperGpu.includes("3090")) estimatedVram = 24;
+  else if (upperGpu.includes("4080") || upperGpu.includes("7900")) estimatedVram = 16;
+  else if (upperGpu.includes("4070") || upperGpu.includes("3060") || upperGpu.includes("6700")) estimatedVram = 12;
+  else if (upperGpu.includes("3080")) estimatedVram = 10;
+  else if (upperGpu.includes("1080 TI")) estimatedVram = 11;
+  else if (upperGpu.includes("1080") || upperGpu.includes("1070") || upperGpu.includes("2070") || upperGpu.includes("2080") || upperGpu.includes("3070") || upperGpu.includes("5700") || upperGpu.includes("6600")) estimatedVram = 8;
+  else if (upperGpu.includes("1060") || upperGpu.includes("1660") || upperGpu.includes("5600")) estimatedVram = 6;
+  else if (upperGpu.includes("1050") || upperGpu.includes("1650") || upperGpu.includes("580") || upperGpu.includes("570")) estimatedVram = 4;
+  else if (upperGpu.includes("INTEL") || upperGpu.includes("UHD") || upperGpu.includes("HD GRAPHICS")) estimatedVram = 2;
+
+  return {
+    gpu: cleanGpu || gpu || "NVIDIA GeForce GTX 1070",
+    vram: estimatedVram,
+    ram,
+    cores,
+    cpuGhz: 3.6,
+  };
+}
+
+function initHardwareSettings() {
+  const toggle = document.getElementById("customHwToggle");
+  const customFields = document.getElementById("hwCustomFields");
+  const badge = document.getElementById("hwStatusBadge");
+  const desc = document.getElementById("hwToggleDesc");
+  const gpuInput = document.getElementById("hwGpuInput");
+  const vramSelect = document.getElementById("hwVramSelect");
+  const vramValue = document.getElementById("hwVramValue");
+  const ramSelect = document.getElementById("hwRamSelect");
+  const ramValue = document.getElementById("hwRamValue");
+  const coresSelect = document.getElementById("hwCoresSelect");
+  const coresValue = document.getElementById("hwCoresValue");
+  const ghzSelect = document.getElementById("hwGhzSelect");
+  const ghzValue = document.getElementById("hwGhzValue");
+  const saveBtn = document.getElementById("saveHwBtn");
+  const detectBtn = document.getElementById("detectHwBtn");
+  const statusMsg = document.getElementById("hwStatusMsg");
+
+  if (!toggle || !customFields) return;
+
+  function showHwMsg(msg, isError = false) {
+    if (!statusMsg) return;
+    statusMsg.textContent = msg;
+    statusMsg.className = isError ? "hw-status-msg error" : "hw-status-msg";
+    statusMsg.hidden = false;
+    setTimeout(() => {
+      if (statusMsg.textContent === msg) statusMsg.hidden = true;
+    }, 3500);
+  }
+
+  function updateUi(hw) {
+    const isCustom = !!hw?.enabled;
+    toggle.checked = isCustom;
+    customFields.hidden = !isCustom;
+    if (badge) {
+      badge.textContent = isCustom ? "Manuel" : "Auto";
+      badge.classList.toggle("custom", isCustom);
+    }
+    if (desc) {
+      desc.textContent = isCustom ? "Configuration manuelle active" : "Détection automatique par le navigateur";
+    }
+
+    const detected = detectBrowserHardware();
+    if (gpuInput) {
+      gpuInput.value = hw?.gpu || detected.gpu || "";
+    }
+    if (vramSelect) {
+      vramSelect.value = String(hw?.vram || detected.vram || 8);
+      if (vramValue) vramValue.textContent = `${vramSelect.value} Go`;
+    }
+    if (ramSelect) {
+      ramSelect.value = String(hw?.ram || detected.ram || 16);
+      if (ramValue) ramValue.textContent = `${ramSelect.value} Go`;
+    }
+    if (coresSelect) {
+      coresSelect.value = String(hw?.cores || detected.cores || 8);
+      if (coresValue) coresValue.textContent = `${coresSelect.value} cœurs`;
+    }
+    if (ghzSelect) {
+      ghzSelect.value = String(hw?.cpuGhz || detected.cpuGhz || 3.6);
+      if (ghzValue) ghzValue.textContent = `${ghzSelect.value} GHz`;
+    }
+  }
+
+  // Chargement depuis chrome.storage.local
+  chrome.storage.local.get(["customHardware"], (res) => {
+    const hw = res.customHardware || { enabled: false };
+    updateUi(hw);
+  });
+
+  if (vramSelect && vramValue) {
+    vramSelect.addEventListener("change", () => {
+      vramValue.textContent = `${vramSelect.value} Go`;
+    });
+  }
+
+  if (ramSelect && ramValue) {
+    ramSelect.addEventListener("change", () => {
+      ramValue.textContent = `${ramSelect.value} Go`;
+    });
+  }
+
+  if (coresSelect && coresValue) {
+    coresSelect.addEventListener("change", () => {
+      coresValue.textContent = `${coresSelect.value} cœurs`;
+    });
+  }
+
+  if (ghzSelect && ghzValue) {
+    ghzSelect.addEventListener("change", () => {
+      ghzValue.textContent = `${ghzSelect.value} GHz`;
+    });
+  }
+
+  toggle.addEventListener("change", () => {
+    const enabled = toggle.checked;
+    customFields.hidden = !enabled;
+    if (badge) {
+      badge.textContent = enabled ? "Manuel" : "Auto";
+      badge.classList.toggle("custom", enabled);
+    }
+    if (desc) {
+      desc.textContent = enabled ? "Configuration manuelle active" : "Détection automatique par le navigateur";
+    }
+
+    const gpu = (gpuInput?.value || "").trim();
+    const vram = Number(vramSelect?.value) || 8;
+    const ram = Number(ramSelect?.value) || 16;
+    const cores = Number(coresSelect?.value) || 8;
+    const cpuGhz = Number(ghzSelect?.value) || 3.6;
+
+    const hwData = { enabled, gpu, vram, ram, cores, cpuGhz };
+    chrome.storage.local.set({ customHardware: hwData }, () => {
+      showHwMsg(enabled ? "✅ Mode manuel activé !" : "✅ Mode détection automatique rétabli !");
+    });
+  });
+
+  if (saveBtn) {
+    saveBtn.addEventListener("click", () => {
+      const gpu = (gpuInput?.value || "").trim();
+      const vram = Number(vramSelect?.value) || 8;
+      const ram = Number(ramSelect?.value) || 16;
+      const cores = Number(coresSelect?.value) || 8;
+      const cpuGhz = Number(ghzSelect?.value) || 3.6;
+
+      const hwData = { enabled: true, gpu, vram, ram, cores, cpuGhz };
+      toggle.checked = true;
+      customFields.hidden = false;
+      if (badge) {
+        badge.textContent = "Manuel";
+        badge.classList.add("custom");
+      }
+      if (desc) desc.textContent = "Configuration manuelle active";
+
+      chrome.storage.local.set({ customHardware: hwData }, () => {
+        showHwMsg("✅ Configuration matérielle enregistrée !");
+      });
+    });
+  }
+
+  if (detectBtn) {
+    detectBtn.addEventListener("click", () => {
+      const detected = detectBrowserHardware();
+      if (gpuInput) gpuInput.value = detected.gpu;
+      if (vramSelect) {
+        vramSelect.value = String(detected.vram);
+        if (vramValue) vramValue.textContent = `${detected.vram} Go`;
+      }
+      if (ramSelect) {
+        ramSelect.value = String(detected.ram);
+        if (ramValue) ramValue.textContent = `${detected.ram} Go`;
+      }
+      if (coresSelect) {
+        coresSelect.value = String(detected.cores);
+        if (coresValue) coresValue.textContent = `${detected.cores} cœurs`;
+      }
+      if (ghzSelect) {
+        ghzSelect.value = String(detected.cpuGhz);
+        if (ghzValue) ghzValue.textContent = `${detected.cpuGhz} GHz`;
+      }
+      showHwMsg("🔍 Matériel détecté prérempli !");
+    });
+  }
+}
+
 function init() {
   // Les 3 boutons doivent être utilisables immédiatement, indépendamment du
   // site actuellement ouvert (voire même si l'onglet actif n'est pas l'un
   // des 3 sites gérés) ; pas besoin d'attendre la résolution de l'onglet.
   initNavigation();
+  initSiteToggle();
+  initScrollIndicators();
   renderSiteLinks(null);
   initSteamSync();
+  initHardwareSettings();
   initCacheManager();
   initVersionChecker();
 
@@ -475,7 +1258,7 @@ function init() {
     } catch (err) {
       host = null;
     }
-    const supportedHost = host && SUPPORTED_HOSTS.includes(host) ? host : null;
+    const supportedHost = normalizeHost(host);
     renderSiteLinks(supportedHost);
     if (supportedHost) {
       showSite(supportedHost);
