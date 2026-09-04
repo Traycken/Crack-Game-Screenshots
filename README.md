@@ -1,5 +1,7 @@
 # Game Sites - Aperçu Screenshots
 
+
+
 Extension pour navigateur permettant d'afficher directement les captures d'écran, vidéos/trailers, configurations requises, comparateur PC, taille des jeux et liens de téléchargement sur divers sites (SkidrowReloaded, IGG-Games, PCGamesTorrents) avec synchronisation Steam.
 
 > [!NOTE]
@@ -74,3 +76,7 @@ Pour mettre à jour l'extension manuellement lorsqu'une nouvelle version est dis
 - 🎮 **Synchronisation Steam** : Badges dynamiques indiquant si le jeu est possédé ou présent dans votre liste de souhaits Steam, avis des joueurs, prix et modes de jeu.
 - 🌐 **Activation / Désactivation par site** : Interrupteur dédié dans le popup pour désactiver ou réactiver l'extension à la volée sur n'importe quel site pris en charge (SkidrowReloaded, IGG-Games, PCGamesTorrents).
 - 🎛️ **Personnalisation complète** : Réglage du nombre de colonnes, de lignes, du nombre maximal de captures, de la largeur d'affichage et de l'échelle des textes via le popup.
+
+<!-- auto-github-signature-start -->
+[![Auto-Github](https://img.shields.io/badge/Auto--Github-Automated-blue?style=flat-square&logo=github)](https://github.com/Traycken/Auto-Github)
+<!-- auto-github-signature-end -->
