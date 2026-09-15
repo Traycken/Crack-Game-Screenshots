@@ -3303,7 +3303,12 @@
           applyLinkStatusToCard(item, localFavLinksChecked.get(dl.url));
         }
 
-        item.addEventListener("click", (e) => e.stopPropagation());
+        item.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const gameTitle = card.querySelector("h2")?.textContent || "";
+          showDownloadSafetyModal(item.href, /-\s*REPACK\b/i.test(gameTitle));
+        });
         grid.appendChild(item);
       } else {
         const item = document.createElement("div");
@@ -3357,6 +3362,59 @@
         checkFavoriteDownloadLinks(panel);
       });
     }
+  }
+
+  const DOWNLOAD_WARNING_KEY = "lgspHideDownloadSafetyWarning";
+
+  function showDownloadSafetyModal(downloadUrl, isRepack = false) {
+    try {
+      if (localStorage.getItem(DOWNLOAD_WARNING_KEY) === "true") {
+        window.open(downloadUrl, "_blank", "noopener,noreferrer");
+        return;
+      }
+    } catch (_) {}
+
+    const overlay = document.createElement("div");
+    overlay.className = "lgsp-safety-overlay";
+    overlay.setAttribute("role", "presentation");
+    const dialog = document.createElement("section");
+    dialog.className = "lgsp-safety-modal";
+    dialog.setAttribute("role", "dialog");
+    dialog.setAttribute("aria-modal", "true");
+    dialog.setAttribute("aria-labelledby", "lgsp-safety-title");
+    dialog.innerHTML = `
+      <div class="lgsp-safety-icon" aria-hidden="true">⚠️</div>
+      <h2 id="lgsp-safety-title">Avant de continuer</h2>
+      <p>Télécharger des fichiers depuis Internet comporte des risques. Vérifiez toujours la source et analysez les fichiers avec un antivirus.</p>
+      ${isRepack ? `<p class="lgsp-safety-critical"><strong>Alerte FitGirl Repack :</strong> des conversations et analyses techniques ont documenté l’inclusion, dans certaines versions — notamment autour de Cyberpunk 2077 — d’un mineur de cryptomonnaie actif pendant la décompression ou l’installation, malgré les démentis. Une installation très longue peut être normale avec un repack fortement compressé, mais restez vigilant. Par précaution, nous recommandons de choisir un autre éditeur/repack.</p>` : ""}
+      <p class="lgsp-safety-critical"><strong>Attention particulière :</strong> si l’archive téléchargée contient uniquement un fichier <code>.exe</code>, sans aucun autre dossier ni fichier, considérez-le comme un virus ou un voleur de cookies et ne le lancez pas.</p>
+      <p class="lgsp-safety-reassurance">Ce message n’est pas là pour faire peur, interrompre ou dissuader votre téléchargement. Il est uniquement affiché à titre de prévention.</p>
+      <label class="lgsp-safety-switch"><input type="checkbox"><span class="lgsp-safety-slider" aria-hidden="true"></span><span>Ne plus afficher ce message</span></label>
+      <div class="lgsp-safety-actions"><button type="button" class="lgsp-safety-cancel">Annuler</button><button type="button" class="lgsp-safety-continue">Continuer</button></div>`;
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+
+    let onKeyDown;
+    const close = () => {
+      overlay.remove();
+      if (onKeyDown) document.removeEventListener("keydown", onKeyDown);
+    };
+    dialog.querySelector(".lgsp-safety-cancel").addEventListener("click", close);
+    dialog.querySelector(".lgsp-safety-continue").addEventListener("click", () => {
+      if (dialog.querySelector("input").checked) {
+        try { localStorage.setItem(DOWNLOAD_WARNING_KEY, "true"); } catch (_) {}
+      }
+      close();
+      window.open(downloadUrl, "_blank", "noopener,noreferrer");
+    });
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
+    onKeyDown = (e) => {
+      if (e.key === "Escape" && document.body.contains(overlay)) {
+        close();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    dialog.querySelector(".lgsp-safety-cancel").focus();
   }
 
   // --- Chargement et orchestration par carte ---------------------------------
