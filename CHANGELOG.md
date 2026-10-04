@@ -2,6 +2,23 @@
 
 ---
 
+## 🚀 Release v2026.10.4.0912 — *Release v2026.10.4.0912* (04/10/2026)
+
+### 📚 Documentation
+- docs(release): update CHANGELOG.md for v2026.9.15.1953 (`3ee68f1`)
+
+### 🚀 Améliorations & Tâches
+- Update version number in manifest.json (`63c97e6`)
+- chore(tree): generate and update DT.md directory tree (`ce92cca`)
+
+### 🔄 Synthèse des Modules Mis à Jour
+- 🎨 **Interface & Vues Web** : `style.css`
+- ⚡ **Logique & Scripts Serveur** : `content.js`
+
+> 📊 **Bilan de la Version** : `10 commit(s)` | `8 fichier(s) modifié(s)`
+
+---
+
 ### 📅 Mise à jour du 04/10/2026 à 09:11:49
 - **Branche :** `main`
 - **Message :** chore(auto-update): 04/10/2026 09:11:49
