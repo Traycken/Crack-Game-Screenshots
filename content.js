@@ -38,11 +38,13 @@
     "igg-games.com": {
       cardSelector: "article.uk-article, article.post, div.post",
       titleSelector: "h2.uk-article-title a, h2.entry-title a, h2 a",
-      detailImageSelector: "img.igg-image-content, .entry-content img, article img",
+      detailImageSelector: "img.igg-image-content",
       layout: "uikit-container",
       pageSelector: ".tm-page",
       containerSelector: ".uk-container",
       mainSelector: ".container-main-post",
+      enhanceCard: true,
+      enhancedListing: true,
     },
   };
 
@@ -72,7 +74,7 @@
     const loader = document.getElementById("lgsp-page-loader");
     if (loader) loader.remove();
     if (document.documentElement) {
-      document.documentElement.classList.remove("lgsp-loading", "lgsp-ready", "lgsp-skidrow-listing", "lgsp-has-custom-bg");
+      document.documentElement.classList.remove("lgsp-loading", "lgsp-ready", "lgsp-skidrow-listing", "lgsp-igg-listing", "lgsp-enhanced-listing", "lgsp-has-custom-bg");
     }
     if (document.body) {
       document.body.classList.remove("lgsp-has-custom-bg");
@@ -94,6 +96,13 @@
       document.documentElement.classList.toggle("lgsp-skidrow-listing", isListingPage);
     }
     if (!isListingPage) return;
+  }
+
+  // Les fiches et pages d'information IGG gardent leur présentation originale.
+  if (config.enhancedListing && /\.html\/?$/i.test(location.pathname)) return;
+  if (config.layout === "sidebar-flex" || config.enhancedListing) {
+    document.documentElement.classList.add("lgsp-enhanced-listing");
+    if (config.enhancedListing) document.documentElement.classList.add("lgsp-igg-listing");
   }
 
   // --- Écran de chargement / Splash Screen pour masquer le site brut ---
@@ -416,6 +425,7 @@
   }
 
   function applyUikitContainerLayout(widthValue) {
+    if (config.enhancedListing) adjustListingElements();
     if (config.pageSelector) {
       document.querySelectorAll(config.pageSelector).forEach((el) => {
         el.style.setProperty("max-width", widthValue, "important");
@@ -441,8 +451,8 @@
     }
   }
 
-  const SEARCH_HISTORY_KEY = "lgsp_skidrow_search_history";
-  const LAST_SEARCH_KEY = "lgsp_skidrow_last_search";
+  const SEARCH_HISTORY_KEY = config.enhancedListing ? storageKey("search_history") : "lgsp_skidrow_search_history";
+  const LAST_SEARCH_KEY = config.enhancedListing ? storageKey("last_search") : "lgsp_skidrow_last_search";
 
   function getSearchHistory() {
     try {
@@ -464,8 +474,8 @@
     } catch {}
   }
 
-  function adjustSkidrowElements() {
-    if (config.layout !== "sidebar-flex") return;
+  function adjustListingElements() {
+    if (config.layout !== "sidebar-flex" && !config.enhancedListing) return;
 
     const main = document.querySelector(config.mainSelector || "#main-content");
     if (main) {
@@ -474,6 +484,10 @@
         search = document.createElement("div");
         search.id = "search-1";
         search.className = "widget lgsp-search-widget";
+        if (config.enhancedListing) {
+          const nativeForm = document.querySelector("#tm-sidebar form[role='search']");
+          if (nativeForm) search.appendChild(nativeForm);
+        }
       }
       if (main.firstElementChild !== search) {
         main.insertBefore(search, main.firstElementChild);
@@ -484,7 +498,7 @@
         form = document.createElement("form");
         form.method = "get";
         form.id = "searchform";
-        form.action = "https://www.skidrowreloaded.com/";
+        form.action = `${location.origin}/`;
         search.appendChild(form);
       }
 
@@ -494,7 +508,7 @@
         // Récupération de la recherche en cours (depuis l'URL ?s=...), ou du champ, ou du dernier terme mémorisé
         const urlParams = new URLSearchParams(location.search);
         const urlQuery = urlParams.get("s");
-        const existingInput = form.querySelector("#searchbar");
+        const existingInput = form.querySelector("input[name='s']");
         const initialVal = urlQuery ?? (existingInput && existingInput.value ? existingInput.value : (localStorage.getItem(LAST_SEARCH_KEY) || ""));
 
         if (urlQuery) {
@@ -558,7 +572,7 @@
           const query = input ? input.value.trim() : "";
           if (query) {
             saveSearchQuery(query);
-            const searchUrl = `https://www.skidrowreloaded.com/?s=${encodeURIComponent(query)}`;
+            const searchUrl = `${location.origin}/?s=${encodeURIComponent(query)}`;
             navigateToUrl(searchUrl);
           }
         });
@@ -566,13 +580,13 @@
     }
 
     // Gestion de la pagination .wp-pagenavi (barre latérale verticale flottante)
-    const allPagenavis = document.querySelectorAll(".wp-pagenavi");
+    const allPagenavis = document.querySelectorAll(".wp-pagenavi, ul.uk-pagination");
     if (allPagenavis.length > 1) {
       for (let i = 1; i < allPagenavis.length; i++) {
         allPagenavis[i].remove();
       }
     }
-    const pagenavi = document.querySelector(".wp-pagenavi");
+    const pagenavi = document.querySelector(".wp-pagenavi, ul.uk-pagination");
     if (pagenavi) {
       formatPagenavi(pagenavi);
     }
@@ -584,7 +598,7 @@
     const text3 = document.querySelector("#text-3");
     if (text3) text3.remove();
 
-    const sidebar = document.querySelector("#sidebar");
+    const sidebar = document.querySelector(config.enhancedListing ? "#tm-sidebar" : "#sidebar");
     if (sidebar) sidebar.remove();
   }
 
@@ -599,7 +613,7 @@
       });
     }
 
-    adjustSkidrowElements();
+    adjustListingElements();
 
     const wrap = document.querySelector(config.wrapSelector);
     const main = document.querySelector(config.mainSelector);
@@ -684,6 +698,12 @@
   });
 
   const detailCache = new Map();
+  // Les anciennes fiches IGG ont été mises en cache avant l'extraction des hébergeurs.
+  const IGG_DETAIL_VERSION = 1;
+
+  function isCurrentPageDetail(data) {
+    return Boolean(data) && (!config.enhancedListing || data.iggDetailVersion === IGG_DETAIL_VERSION);
+  }
 
   function hashString(str) {
     let hash = 5381;
@@ -696,7 +716,9 @@
 
   async function getCachedPageDetail(link) {
     if (detailCache.has(link)) {
-      return detailCache.get(link);
+      const data = detailCache.get(link);
+      if (isCurrentPageDetail(data)) return data;
+      detailCache.delete(link);
     }
     if (isExtensionValid()) {
       try {
@@ -719,7 +741,7 @@
           return null;
         }
 
-        if (item.data) {
+        if (isCurrentPageDetail(item.data)) {
           detailCache.set(link, item.data);
           item.lastAccessedAt = now;
           item.hitCount = (item.hitCount || 0) + 1;
@@ -732,6 +754,7 @@
   }
 
   async function setCachedPageDetail(link, data) {
+    if (config.enhancedListing) data = { ...data, iggDetailVersion: IGG_DETAIL_VERSION };
     detailCache.set(link, data);
     if (isExtensionValid()) {
       try {
@@ -998,6 +1021,21 @@
     }
 
     const processedKeys = new Set();
+    if (config.enhancedListing) {
+      // IGG utilise <b>Link Hébergeur:</b>, avec les liens dans le même paragraphe.
+      doc.querySelectorAll("article p > b.uk-heading-bullet").forEach((label) => {
+        const text = (label.textContent || "").trim();
+        if (!/^Link\s+/i.test(text)) return;
+        const host = /\bTORRENT\s*:/i.test(text) ? "Torrent" : text.replace(/^Link\s+/i, "").replace(/:\s*$/, "");
+        label.parentElement.querySelectorAll("a[href]").forEach((link) => {
+          const rawUrl = link.getAttribute("href");
+          if (!/^https?:\/\//i.test(rawUrl) || processedKeys.has(rawUrl)) return;
+          processedKeys.add(rawUrl);
+          downloadLinks.push({ host, url: cleanDownloadUrl(rawUrl), rawUrl, filename: (link.textContent || "").trim(), isUploading: false });
+        });
+      });
+      if (downloadLinks.length) return { pageGameSize, downloadLinks };
+    }
     const strongs = doc.querySelectorAll("div.post strong, .entry-content strong, #main-content strong, p strong, span strong, strong");
 
     strongs.forEach((st) => {
@@ -3452,6 +3490,7 @@
         }
       } else {
         const res = await fetch(link, { credentials: "include" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const html = await res.text();
         const doc = new DOMParser().parseFromString(html, "text/html");
 
@@ -3481,6 +3520,11 @@
 
       if (pageGameSize) {
         card._lgspGameSize = pageGameSize;
+      }
+
+      // Les liens du site sont disponibles sans attendre la recherche ou les données Steam.
+      if (Array.isArray(downloadLinks) && downloadLinks.length > 0) {
+        renderDownloadsDropdown(card, downloadLinks);
       }
 
       // Si aucun appId direct n'a été trouvé (ex: jeu GOG, Epic ou sans lien Steam), on recherche sur Steam avec le titre
@@ -3565,10 +3609,9 @@
         renderSteamInfo(card, null, null);
       }
 
-      // Rendu du menu déroulant des liens de téléchargement
-      if (Array.isArray(downloadLinks) && downloadLinks.length > 0) {
-        renderDownloadsDropdown(card, downloadLinks);
-      }
+      // Conserver le menu déjà affiché et son état après l'ajout des médias.
+      const downloads = card.querySelector(".lgsp-downloads-wrapper");
+      if (downloads) card.appendChild(downloads);
     } catch (err) {
       status.textContent = "Erreur de chargement";
       console.warn("[Game Sites Screenshots]", link, err);
@@ -3697,6 +3740,20 @@
   }
 
   function enhanceCard(card) {
+    if (config.enhancedListing) {
+      const cover = card.querySelector('[property="image"]');
+      const image = cover?.querySelector("img");
+      const src = cover?.querySelector('meta[property="url"]')?.content || image?.getAttribute("data-src") || image?.getAttribute("src");
+      if (src) {
+        card._lgspCoverData = { src: new URL(src, location.origin).href, alt: image?.alt || "", href: findCardLink(card) };
+      }
+      cover?.remove();
+      card.querySelector('[property="text"]')?.remove();
+      const meta = card.querySelector(".uk-article-meta");
+      const date = meta?.querySelector("time");
+      if (meta && date) meta.replaceChildren(date);
+      return;
+    }
     extractAndCleanCover(card);
     cleanPostMeta(card);
     removeFooterMeta(card);
@@ -3705,7 +3762,7 @@
   function scanForCards() {
     if (isSiteDisabled) return;
     neutralizeAnnoyingPopups();
-    adjustSkidrowElements();
+    adjustListingElements();
     if (lastSettings) enforceMaxWidth(lastSettings);
     const currentPageNum = getPageNumFromUrl(location.href);
     document.querySelectorAll(".wp-pagenavi, ul.uk-pagination").forEach((p) => {
@@ -3773,6 +3830,8 @@
   }
 
   function getNextPageUrl(doc = document) {
+    const headNext = doc.querySelector("link[rel='next']");
+    if (headNext?.href) return headNext.href;
     // 1. WP-PageNavi (SkidrowReloaded & WordPress)
     const pagenavi = doc.querySelector(".wp-pagenavi");
     if (pagenavi) {
@@ -3851,6 +3910,18 @@
   function formatPagenavi(pagenavi) {
     if (!pagenavi || pagenavi.hasAttribute("data-lgsp-formatted")) return;
     pagenavi.setAttribute("data-lgsp-formatted", "1");
+
+    // UIKit fournit la dernière page via un lien numérique, sans a.last.
+    if (pagenavi.matches("ul.uk-pagination")) {
+      const pageNumbers = Array.from(pagenavi.querySelectorAll("a[href]")).map((a) => getPageNumFromUrl(a.href));
+      const maxPages = Math.max(getPageNumFromUrl(location.href), ...pageNumbers);
+      pagenavi.replaceChildren();
+      pagenavi.classList.add("wp-pagenavi");
+      const counter = document.createElement("span");
+      counter.className = "pages";
+      counter.textContent = `Page ${getPageNumFromUrl(location.href)} of ${maxPages}`;
+      pagenavi.appendChild(counter);
+    }
 
     // 1. Détection et mémorisation du nombre total de pages
     let maxPages = 9999;
@@ -3933,7 +4004,7 @@
       start = Math.max(1, end - 4);
     }
 
-    pagenavi.querySelectorAll("a, span").forEach((el) => {
+    pagenavi.querySelectorAll("a, span, li").forEach((el) => {
       if (el.classList.contains("pages") || el.classList.contains("lgsp-pagenavi-jump") || el.closest(".lgsp-pagenavi-jump")) return;
       el.remove();
     });
@@ -3998,7 +4069,7 @@
     if (pagenavi.querySelector(".lgsp-pagenavi-jump")) return;
 
     // Détection du nombre max de pages depuis span.pages ou a.last
-    let maxPages = 9999;
+    let maxPages = parseInt(pagenavi.getAttribute("data-max-pages"), 10) || 9999;
     const pagesSpan = pagenavi.querySelector("span.pages");
     if (pagesSpan) {
       const match = (pagesSpan.textContent || "").match(/of\s+([0-9,]+)/i);
@@ -4059,7 +4130,7 @@
     true
   );
 
-  async function navigateToUrl(targetUrl) {
+  async function navigateToUrl(targetUrl, pushHistory = true) {
     if (isLoadingNextPage) return;
     isLoadingNextPage = true;
     userHasScrolled = false;
@@ -4098,16 +4169,27 @@
         }
       }
 
+      // L'URL doit être à jour avant de générer les boutons et numéros de page.
+      if (pushHistory) window.history.pushState({ url: targetUrl }, "", targetUrl);
+      document.title = doc.title || document.title;
+
       // 3. Mettre à jour la pagination à partir de la nouvelle page chargée
       currentActiveScrollPage = getPageNumFromUrl(targetUrl);
       const newPagenavi = doc.querySelector(".wp-pagenavi, ul.uk-pagination");
       const currentPagenavis = document.querySelectorAll(".wp-pagenavi, ul.uk-pagination");
       if (newPagenavi) {
+        if (!currentPagenavis.length) {
+          const importedPagination = document.importNode(newPagenavi, true);
+          mainContainer.appendChild(importedPagination);
+          formatPagenavi(importedPagination);
+        }
         currentPagenavis.forEach((cp) => {
           cp.removeAttribute("data-lgsp-formatted");
           cp.innerHTML = newPagenavi.innerHTML;
           formatPagenavi(cp);
         });
+      } else {
+        currentPagenavis.forEach((cp) => cp.remove());
       }
 
       // 4. IMPORTANT : Extraire la page suivante DE CETTE NOUVELLE PAGE
@@ -4120,10 +4202,7 @@
         infiniteScrollObserver.observe(infiniteSentinelEl);
       }
 
-      // 6. Mettre à jour l'URL dans la barre d'adresse et l'historique
-      try {
-        window.history.pushState({ url: targetUrl }, "", targetUrl);
-      } catch (_) {}
+      setupInfiniteScroll(doc);
 
       // 7. Mettre à jour le champ de recherche si la navigation provient d'une recherche
       try {
@@ -4247,7 +4326,7 @@
         retryBox.style.cssText = "text-align:center; margin:16px 0; padding:10px;";
         retryBox.innerHTML = `
           <button type="button" style="background:#23233f; color:#cf9f4f; border:1px solid rgba(207,159,79,0.4); border-radius:6px; padding:8px 16px; font-weight:600; font-size:12px; cursor:pointer; transition:all 0.15s ease;">
-            ⚠️ Erreur serveur Skidrow (${err.message || "522"}) • Cliquer pour réessayer
+            ⚠️ Erreur serveur (${err.message || "522"}) • Cliquer pour réessayer
           </button>
         `;
         const retryBtn = retryBox.querySelector("button");
@@ -4269,8 +4348,9 @@
     }
   }
 
-  function setupInfiniteScroll() {
-    nextScrollPageUrl = getNextPageUrl(document);
+  function setupInfiniteScroll(doc = document) {
+    nextScrollPageUrl = getNextPageUrl(doc);
+    hasMorePages = Boolean(nextScrollPageUrl);
     if (!nextScrollPageUrl) return;
 
     const mainContainer = document.querySelector(config.mainSelector);
@@ -4319,7 +4399,7 @@
 
   window.addEventListener("popstate", () => {
     if (location.href) {
-      navigateToUrl(location.href);
+      navigateToUrl(location.href, false);
     }
   });
 

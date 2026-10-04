@@ -1,5 +1,20 @@
 # 📜 Historique des Changements (CHANGELOG.md)
 
+---
+
+### 📅 Mise à jour du 04/10/2026 à 09:11:49
+- **Branche :** `main`
+- **Message :** chore(auto-update): 04/10/2026 09:11:49
+
+**Fichiers modifiés :**
+- 📝 `README.md` *(modified)* *(<span style="color:#22c55e;">+1</span>, <span style="color:#ef4444;">-1</span>)*
+- 📝 `content.js` *(modified)* *(<span style="color:#22c55e;">+111</span>, <span style="color:#ef4444;">-31</span>)*
+- 📝 `style.css` *(modified)* *(<span style="color:#22c55e;">+163</span>, <span style="color:#ef4444;">-108</span>)*
+
+---
+
+# 📜 Historique des Changements (CHANGELOG.md)
+
 Journal automatique généré lors de chaque synchronisation par Auto-Git Push Server.
 
 ---

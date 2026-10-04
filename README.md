@@ -5,7 +5,7 @@
 Extension pour navigateur permettant d'afficher directement les captures d'écran, vidéos/trailers, configurations requises, comparateur PC, taille des jeux et liens de téléchargement sur divers sites (SkidrowReloaded, IGG-Games, PCGamesTorrents) avec synchronisation Steam.
 
 > [!NOTE]
-> **Compatibilité des sites :** L'extension est principalement conçue et optimisée pour **Skidrow / SkidrowReloaded**. Bien que le support pour **IGG-Games** et **PCGamesTorrents** soit présent, il est possible que certaines fonctionnalités ne soient pas totalement disponibles ou fonctionnelles sur ces deux sites.
+> **Compatibilité des sites :** Les listes de **SkidrowReloaded** et **IGG-Games** disposent du thème sombre, des cartes compactes, de la recherche avec historique, de la pagination flottante et du défilement infini. Sur IGG-Games, les jaquettes, captures et liens des hébergeurs sont extraits depuis la structure du site ; les fiches détaillées conservent leur présentation originale. Le support de **PCGamesTorrents** reste partiel.
 
 ---
 
@@ -76,6 +76,12 @@ Pour mettre à jour l'extension manuellement lorsqu'une nouvelle version est dis
 - 🎮 **Synchronisation Steam** : Badges dynamiques indiquant si le jeu est possédé ou présent dans votre liste de souhaits Steam, avis des joueurs, prix et modes de jeu.
 - 🌐 **Activation / Désactivation par site** : Interrupteur dédié dans le popup pour désactiver ou réactiver l'extension à la volée sur n'importe quel site pris en charge (SkidrowReloaded, IGG-Games, PCGamesTorrents).
 - 🎛️ **Personnalisation complète** : Réglage du nombre de colonnes, de lignes, du nombre maximal de captures, de la largeur d'affichage et de l'échelle des textes via le popup.
+
+<!-- auto-github-tech-stack-start -->
+### 🧰 Technologies utilisées
+
+[![JavaScript](https://img.shields.io/badge/javascript-%23323330.svg?style=flat-square&logo=javascript&logoColor=%23F7DF1E)](https://developer.mozilla.org/fr/docs/Web/JavaScript) [![HTML5](https://img.shields.io/badge/html5-%23E34F26.svg?style=flat-square&logo=html5&logoColor=white)](https://developer.mozilla.org/fr/docs/Web/HTML) [![CSS](https://img.shields.io/badge/css-%23663399.svg?style=flat-square&logo=css&logoColor=white)](https://developer.mozilla.org/fr/docs/Web/CSS) [![Git](https://img.shields.io/badge/git-%23F05033.svg?style=flat-square&logo=git&logoColor=white)](https://git-scm.com/) [![GitHub](https://img.shields.io/badge/github-%23121011.svg?style=flat-square&logo=github&logoColor=white)](https://github.com/)
+<!-- auto-github-tech-stack-end -->
 
 <!-- auto-github-signature-start -->
 ---

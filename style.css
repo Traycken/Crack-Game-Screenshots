@@ -90,7 +90,7 @@ html.lgsp-loading {
    Thème sobre graphite + accent laiton.
    ===================================================================== */
 
-html.lgsp-skidrow-listing {
+html.lgsp-enhanced-listing {
     --lgsp-sr-bg: #1b1d22;
     --lgsp-sr-page-bg: #121316;
     --lgsp-sr-header-bg: #16181d;
@@ -108,46 +108,46 @@ html.lgsp-skidrow-listing {
 /* --- Remplacement des textures .jpg par du gris sombre sobre --- */
 
 /* 1. page-bg.jpg -> Fond général de page */
-html.lgsp-skidrow-listing,
-html.lgsp-skidrow-listing body,
-html.lgsp-skidrow-listing #page-wrap {
+html.lgsp-enhanced-listing,
+html.lgsp-enhanced-listing body,
+html.lgsp-enhanced-listing #page-wrap {
     background-color: var(--lgsp-sr-page-bg) !important;
     background-image: none !important;
 }
 
 /* 2. header.jpg -> Fond de l'en-tête et navigation */
-html.lgsp-skidrow-listing #header,
-html.lgsp-skidrow-listing #header-wrap,
-html.lgsp-skidrow-listing #nav {
+html.lgsp-enhanced-listing #header,
+html.lgsp-enhanced-listing #header-wrap,
+html.lgsp-enhanced-listing #nav {
     background-color: var(--lgsp-sr-header-bg) !important;
     background-image: none !important;
 }
 
 /* 3. post-bg.jpg -> Fond des cartes de jeux */
-html.lgsp-skidrow-listing .post,
-html.lgsp-skidrow-listing #overall-container .post {
+html.lgsp-enhanced-listing .post,
+html.lgsp-enhanced-listing #overall-container .post {
     background-color: var(--lgsp-sr-bg) !important;
     background-image: none !important;
 }
 
 /* 4. widget-bg.jpg -> Fond des widgets */
-html.lgsp-skidrow-listing .widget,
-html.lgsp-skidrow-listing #sidebar .widget {
+html.lgsp-enhanced-listing .widget,
+html.lgsp-enhanced-listing #sidebar .widget {
     background-color: var(--lgsp-sr-bg) !important;
     background-image: none !important;
 }
 
 /* 5. footer.jpg -> Fond du pied de page */
-html.lgsp-skidrow-listing #footer,
-html.lgsp-skidrow-listing #footer-wrap {
+html.lgsp-enhanced-listing #footer,
+html.lgsp-enhanced-listing #footer-wrap {
     background-color: var(--lgsp-sr-footer-bg) !important;
     background-image: none !important;
 }
 
 /* --- Carte de jeu ---------------------------------------------------- */
 
-html.lgsp-skidrow-listing #overall-container .post,
-html.lgsp-skidrow-listing .post {
+html.lgsp-enhanced-listing #overall-container .post,
+html.lgsp-enhanced-listing .post {
     width: 100% !important;
     max-width: none !important;
     float: none !important;
@@ -169,14 +169,14 @@ html.lgsp-skidrow-listing .post {
     margin-bottom: 8px !important;
 }
 
-html.lgsp-skidrow-listing #overall-container .post:hover,
-html.lgsp-skidrow-listing .post:hover {
+html.lgsp-enhanced-listing #overall-container .post:hover,
+html.lgsp-enhanced-listing .post:hover {
     border-color: var(--lgsp-sr-border-strong) !important;
 }
 
-html.lgsp-skidrow-listing #overall-container .post h2,
-html.lgsp-skidrow-listing #main-content h2,
-html.lgsp-skidrow-listing .post h2 {
+html.lgsp-enhanced-listing #overall-container .post h2,
+html.lgsp-enhanced-listing #main-content h2,
+html.lgsp-enhanced-listing .post h2 {
     margin: 0 0 8px !important;
     font-size: 1.18em !important;
     font-weight: 700 !important;
@@ -190,22 +190,22 @@ html.lgsp-skidrow-listing .post h2 {
     white-space: normal !important;
 }
 
-html.lgsp-skidrow-listing #overall-container .post h2 a {
+html.lgsp-enhanced-listing #overall-container .post h2 a {
     color: var(--lgsp-sr-text) !important;
     text-decoration: none !important;
 }
 
-html.lgsp-skidrow-listing #overall-container .post h2 a:hover {
+html.lgsp-enhanced-listing #overall-container .post h2 a:hover {
     color: var(--lgsp-sr-accent) !important;
 }
 
-html.lgsp-skidrow-listing #overall-container .post .clear {
+html.lgsp-enhanced-listing #overall-container .post .clear {
     display: none;
 }
 
 /* Bannière d'en-tête (Résultats de recherche / Catégorie) */
-html.lgsp-skidrow-listing .lgsp-header-banner,
-html.lgsp-skidrow-listing #overall-container .lgsp-header-banner,
+html.lgsp-enhanced-listing .lgsp-header-banner,
+html.lgsp-enhanced-listing #overall-container .lgsp-header-banner,
 .lgsp-header-banner {
     display: flex !important;
     align-items: center !important;
@@ -224,7 +224,7 @@ html.lgsp-skidrow-listing #overall-container .lgsp-header-banner,
     box-sizing: border-box !important;
 }
 
-html.lgsp-skidrow-listing .lgsp-header-banner h2,
+html.lgsp-enhanced-listing .lgsp-header-banner h2,
 .lgsp-header-banner h2 {
     margin: 0 !important;
     padding: 0 !important;
@@ -256,7 +256,7 @@ html.lgsp-skidrow-listing .lgsp-header-banner h2,
 }
 
 /* Ligne de date "Posted [Date]" */
-html.lgsp-skidrow-listing #overall-container .post > .meta {
+html.lgsp-enhanced-listing #overall-container .post > .meta {
     font-size: 0.72em;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -265,7 +265,7 @@ html.lgsp-skidrow-listing #overall-container .post > .meta {
 }
 
 /* Neutralisation de l'extrait vertical sur les listes Skidrow */
-html.lgsp-skidrow-listing #overall-container .post-excerpt {
+html.lgsp-enhanced-listing #overall-container .post-excerpt {
     display: none !important;
 }
 
@@ -273,7 +273,7 @@ html.lgsp-skidrow-listing #overall-container .post-excerpt {
    Pagination moderne verticale (Flottante sur le côté gauche)
    ===================================================================== */
 
-html.lgsp-skidrow-listing .wp-pagenavi,
+html.lgsp-enhanced-listing .wp-pagenavi,
 .wp-pagenavi {
     position: fixed !important;
     left: 50px !important;
@@ -481,7 +481,7 @@ html.lgsp-skidrow-listing .wp-pagenavi,
 }
 
 @media (max-width: 1400px) {
-    html.lgsp-skidrow-listing .wp-pagenavi,
+    html.lgsp-enhanced-listing .wp-pagenavi,
     .wp-pagenavi {
         left: 14px !important;
     }
@@ -1180,101 +1180,101 @@ html.lgsp-skidrow-listing .wp-pagenavi,
 
 /* --- Adaptations Steam Info pour le thème sombre Skidrow ------------ */
 
-html.lgsp-skidrow-listing #overall-container .lgsp-check,
-html.lgsp-skidrow-listing #overall-container .lgsp-svg-check {
+html.lgsp-enhanced-listing #overall-container .lgsp-check,
+html.lgsp-enhanced-listing #overall-container .lgsp-svg-check {
     color: #4ade80 !important;
 }
 
-html.lgsp-skidrow-listing #overall-container .lgsp-cross,
-html.lgsp-skidrow-listing #overall-container .lgsp-svg-cross {
+html.lgsp-enhanced-listing #overall-container .lgsp-cross,
+html.lgsp-enhanced-listing #overall-container .lgsp-svg-cross {
     color: #f87171 !important;
 }
 
-html.lgsp-skidrow-listing #overall-container .lgsp-price-discount s {
+html.lgsp-enhanced-listing #overall-container .lgsp-price-discount s {
     opacity: 0.6;
 }
 
-html.lgsp-skidrow-listing #overall-container .lgsp-game-desc {
+html.lgsp-enhanced-listing #overall-container .lgsp-game-desc {
     color: var(--lgsp-sr-text-dim);
 }
 
-html.lgsp-skidrow-listing #overall-container .lgsp-steam-info {
+html.lgsp-enhanced-listing #overall-container .lgsp-steam-info {
     padding-top: 4px;
     padding-bottom: 12px;
 }
 
-html.lgsp-skidrow-listing #overall-container .lgsp-steam-btn {
+html.lgsp-enhanced-listing #overall-container .lgsp-steam-btn {
     background: rgba(27, 40, 56, 0.9);
     border-color: var(--lgsp-sr-border);
     color: #c7d5e0;
 }
 
-html.lgsp-skidrow-listing #overall-container .lgsp-steam-btn:hover {
+html.lgsp-enhanced-listing #overall-container .lgsp-steam-btn:hover {
     background: #2a475e;
     color: #fff;
 }
 
-html.lgsp-skidrow-listing #overall-container .lgsp-rev-positive {
+html.lgsp-enhanced-listing #overall-container .lgsp-rev-positive {
     background: rgba(34, 197, 94, 0.15);
     color: #4ade80;
     border-color: rgba(34, 197, 94, 0.25);
 }
 
-html.lgsp-skidrow-listing #overall-container .lgsp-rev-mixed {
+html.lgsp-enhanced-listing #overall-container .lgsp-rev-mixed {
     background: rgba(234, 179, 8, 0.15);
     color: #facc15;
     border-color: rgba(234, 179, 8, 0.25);
 }
 
-html.lgsp-skidrow-listing #overall-container .lgsp-rev-negative {
+html.lgsp-enhanced-listing #overall-container .lgsp-rev-negative {
     background: rgba(239, 68, 68, 0.15);
     color: #f87171;
     border-color: rgba(239, 68, 68, 0.25);
 }
 
-html.lgsp-skidrow-listing #overall-container .lgsp-price-free {
+html.lgsp-enhanced-listing #overall-container .lgsp-price-free {
     background: rgba(16, 185, 129, 0.15);
     color: #34d399;
     border-color: rgba(16, 185, 129, 0.30);
 }
 
-html.lgsp-skidrow-listing #overall-container .lgsp-price-discount {
+html.lgsp-enhanced-listing #overall-container .lgsp-price-discount {
     background: rgba(245, 158, 11, 0.18);
     color: #fbbf24;
     border-color: rgba(245, 158, 11, 0.35);
 }
 
-html.lgsp-skidrow-listing #overall-container .lgsp-price-normal {
+html.lgsp-enhanced-listing #overall-container .lgsp-price-normal {
     background: rgba(255, 255, 255, 0.07);
     color: var(--lgsp-sr-text);
     border-color: var(--lgsp-sr-border);
 }
 
-html.lgsp-skidrow-listing #overall-container .lgsp-mode-badge {
+html.lgsp-enhanced-listing #overall-container .lgsp-mode-badge {
     background: rgba(99, 102, 241, 0.16);
     color: #a5b4fc;
     border-color: rgba(99, 102, 241, 0.28);
 }
 
-html.lgsp-skidrow-listing #overall-container .lgsp-lang-full {
+html.lgsp-enhanced-listing #overall-container .lgsp-lang-full {
     background: rgba(34, 197, 94, 0.14);
     color: #4ade80;
     border-color: rgba(34, 197, 94, 0.24);
 }
 
-html.lgsp-skidrow-listing #overall-container .lgsp-lang-text {
+html.lgsp-enhanced-listing #overall-container .lgsp-lang-text {
     background: rgba(234, 179, 8, 0.14);
     color: #facc15;
     border-color: rgba(234, 179, 8, 0.24);
 }
 
-html.lgsp-skidrow-listing #overall-container .lgsp-lang-none {
+html.lgsp-enhanced-listing #overall-container .lgsp-lang-none {
     background: rgba(239, 68, 68, 0.12);
     color: #f87171;
     border-color: rgba(239, 68, 68, 0.20);
 }
 
-html.lgsp-skidrow-listing #overall-container .lgsp-lang-unknown {
+html.lgsp-enhanced-listing #overall-container .lgsp-lang-unknown {
     background: rgba(255, 255, 255, 0.06);
     color: var(--lgsp-sr-text-dim);
     border-color: var(--lgsp-sr-border);
@@ -1294,7 +1294,7 @@ html.lgsp-skidrow-listing #overall-container .lgsp-lang-unknown {
     box-sizing: border-box;
 }
 
-html.lgsp-skidrow-listing #overall-container .lgsp-gallery-container {
+html.lgsp-enhanced-listing #overall-container .lgsp-gallery-container {
     border-top: 1px solid var(--lgsp-sr-border);
 }
 
@@ -1845,8 +1845,8 @@ html.lgsp-skidrow-listing #overall-container .lgsp-gallery-container {
    Centrage du Header SkidrowReloaded
    ===================================================================== */
 
-html.lgsp-skidrow-listing #header-wrap,
-html.lgsp-skidrow-listing #header {
+html.lgsp-enhanced-listing #header-wrap,
+html.lgsp-enhanced-listing #header {
     width: 100% !important;
     max-width: none !important;
     margin: 0 auto !important;
@@ -1864,7 +1864,7 @@ html.lgsp-skidrow-listing #header {
     padding-bottom: 16px !important;
 }
 
-html.lgsp-skidrow-listing #overall-container {
+html.lgsp-enhanced-listing #overall-container {
     clear: both !important;
     position: relative !important;
     margin-top: 24px !important;
@@ -1872,7 +1872,7 @@ html.lgsp-skidrow-listing #overall-container {
     width: 100% !important;
 }
 
-html.lgsp-skidrow-listing #header #logo {
+html.lgsp-enhanced-listing #header #logo {
     order: 1 !important;
     float: none !important;
     display: flex !important;
@@ -1884,14 +1884,14 @@ html.lgsp-skidrow-listing #header #logo {
     position: static !important;
 }
 
-html.lgsp-skidrow-listing #header #logo a,
-html.lgsp-skidrow-listing #header #logo img {
+html.lgsp-enhanced-listing #header #logo a,
+html.lgsp-enhanced-listing #header #logo img {
     display: block !important;
     margin: 0 auto !important;
     float: none !important;
 }
 
-html.lgsp-skidrow-listing #header #communication {
+html.lgsp-enhanced-listing #header #communication {
     order: 2 !important;
     float: none !important;
     display: flex !important;
@@ -1907,13 +1907,13 @@ html.lgsp-skidrow-listing #header #communication {
     width: 100% !important;
 }
 
-html.lgsp-skidrow-listing #header #communication a,
-html.lgsp-skidrow-listing #header #communication img {
+html.lgsp-enhanced-listing #header #communication a,
+html.lgsp-enhanced-listing #header #communication img {
     float: none !important;
     display: inline-block !important;
 }
 
-html.lgsp-skidrow-listing #header #nav {
+html.lgsp-enhanced-listing #header #nav {
     order: 3 !important;
     float: none !important;
     display: flex !important;
@@ -1931,7 +1931,7 @@ html.lgsp-skidrow-listing #header #nav {
     height: auto !important;
 }
 
-html.lgsp-skidrow-listing #header #nav ul#menu-menu {
+html.lgsp-enhanced-listing #header #nav ul#menu-menu {
     float: none !important;
     display: flex !important;
     flex-wrap: wrap !important;
@@ -1943,7 +1943,7 @@ html.lgsp-skidrow-listing #header #nav ul#menu-menu {
     width: 100% !important;
 }
 
-html.lgsp-skidrow-listing #header #nav ul#menu-menu > li {
+html.lgsp-enhanced-listing #header #nav ul#menu-menu > li {
     float: none !important;
     display: inline-flex !important;
     align-items: center !important;
@@ -1954,13 +1954,13 @@ html.lgsp-skidrow-listing #header #nav ul#menu-menu > li {
    Barre de recherche SkidrowReloaded & Éléments masqués
    ===================================================================== */
 
-html.lgsp-skidrow-listing #sidebar,
-html.lgsp-skidrow-listing #text-33,
-html.lgsp-skidrow-listing #text-3 {
+html.lgsp-enhanced-listing #sidebar,
+html.lgsp-enhanced-listing #text-33,
+html.lgsp-enhanced-listing #text-3 {
     display: none !important;
 }
 
-html.lgsp-skidrow-listing #search-1,
+html.lgsp-enhanced-listing #search-1,
 #search-1.lgsp-search-widget {
     display: block !important;
     float: none !important;
@@ -1975,11 +1975,11 @@ html.lgsp-skidrow-listing #search-1,
     position: relative !important;
 }
 
-html.lgsp-skidrow-listing #search-1 h3 {
+html.lgsp-enhanced-listing #search-1 h3 {
     display: none !important;
 }
 
-html.lgsp-skidrow-listing #search-1 form {
+html.lgsp-enhanced-listing #search-1 form {
     position: relative !important;
     width: 100% !important;
     display: flex !important;
@@ -1992,7 +1992,7 @@ html.lgsp-skidrow-listing #search-1 form {
     box-sizing: border-box !important;
 }
 
-html.lgsp-skidrow-listing #search-1 .lgsp-searchbar-wrapper {
+html.lgsp-enhanced-listing #search-1 .lgsp-searchbar-wrapper {
     position: relative !important;
     flex: 1 1 auto !important;
     display: flex !important;
@@ -2003,7 +2003,7 @@ html.lgsp-skidrow-listing #search-1 .lgsp-searchbar-wrapper {
     box-sizing: border-box !important;
 }
 
-html.lgsp-skidrow-listing #search-1 #searchbar {
+html.lgsp-enhanced-listing #search-1 #searchbar {
     flex: 1 1 auto !important;
     width: 100% !important;
     height: 48px !important;
@@ -2019,13 +2019,13 @@ html.lgsp-skidrow-listing #search-1 #searchbar {
     margin: 0 !important;
 }
 
-html.lgsp-skidrow-listing #search-1 #searchbar:focus {
+html.lgsp-enhanced-listing #search-1 #searchbar:focus {
     outline: none !important;
     border-color: var(--lgsp-sr-accent) !important;
     box-shadow: 0 0 0 2px var(--lgsp-sr-accent-soft) !important;
 }
 
-html.lgsp-skidrow-listing #search-1 .lgsp-search-clear-btn {
+html.lgsp-enhanced-listing #search-1 .lgsp-search-clear-btn {
     position: absolute !important;
     right: 12px !important;
     top: 50% !important;
@@ -2049,18 +2049,18 @@ html.lgsp-skidrow-listing #search-1 .lgsp-search-clear-btn {
     z-index: 2 !important;
 }
 
-html.lgsp-skidrow-listing #search-1 .lgsp-search-clear-btn.lgsp-visible {
+html.lgsp-enhanced-listing #search-1 .lgsp-search-clear-btn.lgsp-visible {
     opacity: 1 !important;
     pointer-events: auto !important;
 }
 
-html.lgsp-skidrow-listing #search-1 .lgsp-search-clear-btn:hover {
+html.lgsp-enhanced-listing #search-1 .lgsp-search-clear-btn:hover {
     background: rgba(255, 255, 255, 0.2) !important;
     color: #ffffff !important;
     transform: translateY(-50%) scale(1.1) !important;
 }
 
-html.lgsp-skidrow-listing #search-1 #lgsp-search-btn {
+html.lgsp-enhanced-listing #search-1 #lgsp-search-btn {
     flex: 0 0 auto !important;
     display: inline-flex !important;
     align-items: center !important;
@@ -2081,17 +2081,17 @@ html.lgsp-skidrow-listing #search-1 #lgsp-search-btn {
     transition: background 0.15s ease, transform 0.15s ease, opacity 0.15s ease !important;
 }
 
-html.lgsp-skidrow-listing #search-1 #lgsp-search-btn:hover {
+html.lgsp-enhanced-listing #search-1 #lgsp-search-btn:hover {
     background: #e2b365 !important;
     transform: translateY(-1px) !important;
 }
 
-html.lgsp-skidrow-listing #search-1 #lgsp-search-btn svg {
+html.lgsp-enhanced-listing #search-1 #lgsp-search-btn svg {
     flex-shrink: 0 !important;
     display: block !important;
 }
 
-html.lgsp-skidrow-listing #search-1 form::after {
+html.lgsp-enhanced-listing #search-1 form::after {
     display: none !important;
     content: none !important;
 }
@@ -2100,7 +2100,7 @@ html.lgsp-skidrow-listing #search-1 form::after {
    Centrage Pagination & Footer SkidrowReloaded
    ===================================================================== */
 
-html.lgsp-skidrow-listing .wp-pagenavi {
+html.lgsp-enhanced-listing .wp-pagenavi {
     width: 100% !important;
     float: none !important;
     clear: both !important;
@@ -2115,8 +2115,8 @@ html.lgsp-skidrow-listing .wp-pagenavi {
     box-sizing: border-box !important;
 }
 
-html.lgsp-skidrow-listing .wp-pagenavi a,
-html.lgsp-skidrow-listing .wp-pagenavi span {
+html.lgsp-enhanced-listing .wp-pagenavi a,
+html.lgsp-enhanced-listing .wp-pagenavi span {
     float: none !important;
     display: inline-flex !important;
     align-items: center !important;
@@ -2124,7 +2124,7 @@ html.lgsp-skidrow-listing .wp-pagenavi span {
     margin: 2px !important;
 }
 
-html.lgsp-skidrow-listing #footer {
+html.lgsp-enhanced-listing #footer {
     width: 100% !important;
     float: none !important;
     clear: both !important;
@@ -2138,7 +2138,7 @@ html.lgsp-skidrow-listing #footer {
     box-sizing: border-box !important;
 }
 
-html.lgsp-skidrow-listing #footer * {
+html.lgsp-enhanced-listing #footer * {
     float: none !important;
     text-align: center !important;
     margin-left: auto !important;
@@ -2755,11 +2755,11 @@ html.lgsp-has-custom-bg #main,
 html.lgsp-has-custom-bg .tm-page,
 html.lgsp-has-custom-bg .uk-container,
 html.lgsp-has-custom-bg .container-main-post,
-html.lgsp-skidrow-listing.lgsp-has-custom-bg,
-html.lgsp-skidrow-listing.lgsp-has-custom-bg body,
-html.lgsp-skidrow-listing.lgsp-has-custom-bg #page-wrap,
-html.lgsp-skidrow-listing.lgsp-has-custom-bg #overall-container,
-html.lgsp-skidrow-listing.lgsp-has-custom-bg #main-content {
+html.lgsp-enhanced-listing.lgsp-has-custom-bg,
+html.lgsp-enhanced-listing.lgsp-has-custom-bg body,
+html.lgsp-enhanced-listing.lgsp-has-custom-bg #page-wrap,
+html.lgsp-enhanced-listing.lgsp-has-custom-bg #overall-container,
+html.lgsp-enhanced-listing.lgsp-has-custom-bg #main-content {
     background: transparent !important;
     background-color: transparent !important;
     background-image: none !important;
@@ -2777,8 +2777,8 @@ html.lgsp-has-custom-bg .tm-page {
    ===================================================================== */
 
 /* 1. Cartes de jeux (Post Cards) */
-html.lgsp-skidrow-listing.lgsp-has-custom-bg #overall-container .post,
-html.lgsp-skidrow-listing.lgsp-has-custom-bg .post,
+html.lgsp-enhanced-listing.lgsp-has-custom-bg #overall-container .post,
+html.lgsp-enhanced-listing.lgsp-has-custom-bg .post,
 html.lgsp-has-custom-bg .lgsp-card,
 html.lgsp-has-custom-bg .uk-article {
     background: rgba(18, 21, 28, var(--lgsp-glass-opacity, 0.65)) !important;
@@ -2790,8 +2790,8 @@ html.lgsp-has-custom-bg .uk-article {
     transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s ease, background-color 0.2s ease !important;
 }
 
-html.lgsp-skidrow-listing.lgsp-has-custom-bg #overall-container .post:hover,
-html.lgsp-skidrow-listing.lgsp-has-custom-bg .post:hover,
+html.lgsp-enhanced-listing.lgsp-has-custom-bg #overall-container .post:hover,
+html.lgsp-enhanced-listing.lgsp-has-custom-bg .post:hover,
 html.lgsp-has-custom-bg .lgsp-card:hover {
     background: rgba(23, 27, 36, var(--lgsp-glass-hover-opacity, 0.75)) !important;
     border-color: rgba(207, 159, 79, 0.45) !important;
@@ -2799,9 +2799,9 @@ html.lgsp-has-custom-bg .lgsp-card:hover {
 }
 
 /* 2. En-tête (Header), Navigation & Menu */
-html.lgsp-skidrow-listing.lgsp-has-custom-bg #header,
-html.lgsp-skidrow-listing.lgsp-has-custom-bg #header-wrap,
-html.lgsp-skidrow-listing.lgsp-has-custom-bg #nav {
+html.lgsp-enhanced-listing.lgsp-has-custom-bg #header,
+html.lgsp-enhanced-listing.lgsp-has-custom-bg #header-wrap,
+html.lgsp-enhanced-listing.lgsp-has-custom-bg #nav {
     background: rgba(14, 16, 22, var(--lgsp-glass-opacity, 0.72)) !important;
     backdrop-filter: blur(var(--lgsp-glass-blur, 24px)) saturate(var(--lgsp-glass-saturate, 190%)) !important;
     -webkit-backdrop-filter: blur(var(--lgsp-glass-blur, 24px)) saturate(var(--lgsp-glass-saturate, 190%)) !important;
@@ -2809,7 +2809,7 @@ html.lgsp-skidrow-listing.lgsp-has-custom-bg #nav {
     box-shadow: 0 8px 32px rgba(0, 0, 0, var(--lgsp-glass-shadow-opacity, 0.35)), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
 }
 
-html.lgsp-skidrow-listing.lgsp-has-custom-bg #header #nav ul#menu-menu > li > a {
+html.lgsp-enhanced-listing.lgsp-has-custom-bg #header #nav ul#menu-menu > li > a {
     background: rgba(255, 255, 255, 0.06) !important;
     backdrop-filter: blur(var(--lgsp-glass-blur, 10px)) !important;
     -webkit-backdrop-filter: blur(var(--lgsp-glass-blur, 10px)) !important;
@@ -2819,7 +2819,7 @@ html.lgsp-skidrow-listing.lgsp-has-custom-bg #header #nav ul#menu-menu > li > a 
     transition: all 0.15s ease !important;
 }
 
-html.lgsp-skidrow-listing.lgsp-has-custom-bg #header #nav ul#menu-menu > li > a:hover {
+html.lgsp-enhanced-listing.lgsp-has-custom-bg #header #nav ul#menu-menu > li > a:hover {
     background: rgba(207, 159, 79, 0.22) !important;
     border-color: rgba(207, 159, 79, 0.5) !important;
     color: #cf9f4f !important;
@@ -2827,7 +2827,7 @@ html.lgsp-skidrow-listing.lgsp-has-custom-bg #header #nav ul#menu-menu > li > a:
 }
 
 /* 3. Barre de recherche (Search Bar Widget) */
-html.lgsp-skidrow-listing.lgsp-has-custom-bg #search-1 #searchbar {
+html.lgsp-enhanced-listing.lgsp-has-custom-bg #search-1 #searchbar {
     background: rgba(18, 21, 28, var(--lgsp-glass-opacity, 0.65)) !important;
     backdrop-filter: blur(var(--lgsp-glass-blur, 20px)) saturate(var(--lgsp-glass-saturate, 180%)) !important;
     -webkit-backdrop-filter: blur(var(--lgsp-glass-blur, 20px)) saturate(var(--lgsp-glass-saturate, 180%)) !important;
@@ -2836,13 +2836,13 @@ html.lgsp-skidrow-listing.lgsp-has-custom-bg #search-1 #searchbar {
     color: #ffffff !important;
 }
 
-html.lgsp-skidrow-listing.lgsp-has-custom-bg #search-1 #searchbar:focus {
+html.lgsp-enhanced-listing.lgsp-has-custom-bg #search-1 #searchbar:focus {
     background: rgba(23, 27, 36, var(--lgsp-glass-hover-opacity, 0.8)) !important;
     border-color: #cf9f4f !important;
     box-shadow: 0 8px 32px rgba(0, 0, 0, var(--lgsp-glass-shadow-opacity, 0.45)), 0 0 18px rgba(207, 159, 79, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
 }
 
-html.lgsp-skidrow-listing.lgsp-has-custom-bg #search-1 #lgsp-search-btn {
+html.lgsp-enhanced-listing.lgsp-has-custom-bg #search-1 #lgsp-search-btn {
     background: rgba(207, 159, 79, var(--lgsp-glass-opacity, 0.85)) !important;
     backdrop-filter: blur(var(--lgsp-glass-blur, 12px)) !important;
     -webkit-backdrop-filter: blur(var(--lgsp-glass-blur, 12px)) !important;
@@ -2851,7 +2851,7 @@ html.lgsp-skidrow-listing.lgsp-has-custom-bg #search-1 #lgsp-search-btn {
 }
 
 /* 4. Pagination flottante (.wp-pagenavi) */
-html.lgsp-skidrow-listing.lgsp-has-custom-bg .wp-pagenavi {
+html.lgsp-enhanced-listing.lgsp-has-custom-bg .wp-pagenavi {
     background: rgba(14, 16, 22, var(--lgsp-glass-opacity, 0.75)) !important;
     backdrop-filter: blur(var(--lgsp-glass-blur, 20px)) saturate(var(--lgsp-glass-saturate, 180%)) !important;
     -webkit-backdrop-filter: blur(var(--lgsp-glass-blur, 20px)) saturate(var(--lgsp-glass-saturate, 180%)) !important;
@@ -2860,8 +2860,8 @@ html.lgsp-skidrow-listing.lgsp-has-custom-bg .wp-pagenavi {
     border-radius: 14px !important;
 }
 
-html.lgsp-skidrow-listing.lgsp-has-custom-bg .wp-pagenavi a,
-html.lgsp-skidrow-listing.lgsp-has-custom-bg .wp-pagenavi span {
+html.lgsp-enhanced-listing.lgsp-has-custom-bg .wp-pagenavi a,
+html.lgsp-enhanced-listing.lgsp-has-custom-bg .wp-pagenavi span {
     background: rgba(255, 255, 255, 0.06) !important;
     backdrop-filter: blur(var(--lgsp-glass-blur, 10px)) !important;
     -webkit-backdrop-filter: blur(var(--lgsp-glass-blur, 10px)) !important;
@@ -2870,14 +2870,14 @@ html.lgsp-skidrow-listing.lgsp-has-custom-bg .wp-pagenavi span {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
 }
 
-html.lgsp-skidrow-listing.lgsp-has-custom-bg .wp-pagenavi a:hover {
+html.lgsp-enhanced-listing.lgsp-has-custom-bg .wp-pagenavi a:hover {
     background: rgba(207, 159, 79, 0.25) !important;
     border-color: rgba(207, 159, 79, 0.5) !important;
     color: #cf9f4f !important;
     box-shadow: 0 0 12px rgba(207, 159, 79, 0.35) !important;
 }
 
-html.lgsp-skidrow-listing.lgsp-has-custom-bg .wp-pagenavi span.current {
+html.lgsp-enhanced-listing.lgsp-has-custom-bg .wp-pagenavi span.current {
     background: rgba(207, 159, 79, var(--lgsp-glass-opacity, 0.88)) !important;
     color: #14161d !important;
     border-color: rgba(255, 255, 255, 0.3) !important;
@@ -2949,8 +2949,8 @@ html.lgsp-has-custom-bg .lgsp-page-separator-badge {
 }
 
 /* 9. Pied de page (Footer) */
-html.lgsp-skidrow-listing.lgsp-has-custom-bg #footer,
-html.lgsp-skidrow-listing.lgsp-has-custom-bg #footer-wrap {
+html.lgsp-enhanced-listing.lgsp-has-custom-bg #footer,
+html.lgsp-enhanced-listing.lgsp-has-custom-bg #footer-wrap {
     background: rgba(14, 16, 22, var(--lgsp-glass-opacity, 0.72)) !important;
     backdrop-filter: blur(var(--lgsp-glass-blur, 24px)) saturate(var(--lgsp-glass-saturate, 190%)) !important;
     -webkit-backdrop-filter: blur(var(--lgsp-glass-blur, 24px)) saturate(var(--lgsp-glass-saturate, 190%)) !important;
@@ -2966,4 +2966,59 @@ html.lgsp-has-custom-bg .lgsp-lightbox-content {
     -webkit-backdrop-filter: blur(var(--lgsp-glass-blur, 28px)) saturate(var(--lgsp-glass-saturate, 190%)) !important;
     border: 1px solid rgba(255, 255, 255, var(--lgsp-glass-border-opacity, 0.16)) !important;
     box-shadow: 0 24px 64px rgba(0, 0, 0, var(--lgsp-glass-shadow-opacity, 0.65)), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+}
+
+/* IGG-Games : même thème et même recherche, structure UIKit. */
+html.lgsp-igg-listing body,
+html.lgsp-igg-listing .tm-page-container,
+html.lgsp-igg-listing .tm-page,
+html.lgsp-igg-listing #tm-main {
+    background: var(--lgsp-sr-page-bg) !important;
+    color: var(--lgsp-sr-text) !important;
+}
+html.lgsp-igg-listing .tm-header,
+html.lgsp-igg-listing .tm-header-mobile,
+html.lgsp-igg-listing .tm-headerbar,
+html.lgsp-igg-listing .uk-navbar-container,
+html.lgsp-igg-listing .tm-toolbar,
+html.lgsp-igg-listing .tm-footer {
+    background: var(--lgsp-sr-header-bg) !important;
+    color: var(--lgsp-sr-text) !important;
+}
+html.lgsp-igg-listing .uk-navbar-nav > li > a,
+html.lgsp-igg-listing .uk-article-title a {
+    color: var(--lgsp-sr-text) !important;
+}
+html.lgsp-igg-listing .uk-article-title a:hover {
+    color: var(--lgsp-sr-accent) !important;
+}
+html.lgsp-igg-listing #tm-main { padding: 20px 0 !important; }
+html.lgsp-igg-listing .container-main-post {
+    width: 100% !important;
+    min-width: 0 !important;
+    flex: 1 1 100% !important;
+}
+html.lgsp-igg-listing .container-main-post > .uk-grid {
+    display: block !important;
+    margin: 0 !important;
+}
+html.lgsp-igg-listing .container-main-post > .uk-grid > div {
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+html.lgsp-igg-listing .uk-grid-divider > :not(.uk-first-column)::before,
+html.lgsp-igg-listing .uk-grid-divider > .uk-grid-margin::before {
+    display: none !important;
+}
+html.lgsp-igg-listing .uk-article-meta {
+    color: var(--lgsp-sr-text-dim) !important;
+    margin: 0 0 10px !important;
+    font-size: .85em !important;
+}
+html.lgsp-igg-listing .post h2 a { color: var(--lgsp-sr-text) !important; }
+html.lgsp-igg-listing.lgsp-has-custom-bg .tm-page-container,
+html.lgsp-igg-listing.lgsp-has-custom-bg .tm-page,
+html.lgsp-igg-listing.lgsp-has-custom-bg #tm-main {
+    background: transparent !important;
 }

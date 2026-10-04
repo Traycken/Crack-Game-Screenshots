@@ -3,8 +3,8 @@
 > 📊 **Arborescence complète du dépôt**, avec poids et lignes de code par fichier.
 > Synchronisé et mis à jour automatiquement avec [Auto-Github](https://github.com/Traycken/Auto-Github).
 
-🕒 **Dernière mise à jour :** `16/09/2026 à 17:46:43`  
-📁 **Total Fichiers :** `19 fichiers` • 📝 **Lignes de code :** `12 239 lignes` • 💾 **Poids total :** `813.6 KB`
+🕒 **Dernière mise à jour :** `04/10/2026 à 09:11:49`  
+📁 **Total Fichiers :** `19 fichiers` • 📝 **Lignes de code :** `12 389 lignes` • 💾 **Poids total :** `823.8 KB`
 
 ---
 
@@ -20,17 +20,17 @@
 │   └── 📄 icon.svg (15 lignes • 694 B)
 ├── 📄 .gitignore (11 lignes • 117 B)
 ├── 📄 background.js (1 244 lignes • 41.6 KB)
-├── 📄 CHANGELOG.md (57 lignes • 1.7 KB)
-├── 📄 content.js (4 395 lignes • 167.2 KB)
+├── 📄 CHANGELOG.md (72 lignes • 2.3 KB)
+├── 📄 content.js (4 475 lignes • 171.6 KB)
 ├── 📄 DT.md (55 lignes • 2.0 KB)
 ├── 📄 hls.min.js (3 lignes • 404.3 KB)
 ├── 📄 manifest.json (72 lignes • 2.2 KB)
 ├── 📄 popup.css (1 406 lignes • 27.9 KB)
 ├── 📄 popup.html (458 lignes • 20.5 KB)
 ├── 📄 popup.js (1 272 lignes • 42.7 KB)
-├── 📄 README.md (88 lignes • 6.1 KB)
+├── 📄 README.md (88 lignes • 6.2 KB)
 ├── 📄 steam-sync-content.js (172 lignes • 5.8 KB)
-├── 📄 style.css (2 970 lignes • 85.4 KB)
+├── 📄 style.css (3 025 lignes • 90.3 KB)
 └── 📄 updates.json (21 lignes • 663 B)
 ```
 
@@ -40,15 +40,15 @@
 
 | Type / Extension | Fichiers | Lignes | Poids Total |
 |:---|---:|---:|---:|
-| `*.js` | 5 | 7 086 | 661.6 KB |
-| `*.css` | 2 | 4 376 | 113.2 KB |
+| `*.js` | 5 | 7 166 | 666.0 KB |
+| `*.css` | 2 | 4 431 | 118.2 KB |
 | `*.html` | 1 | 458 | 20.5 KB |
-| `*.md` | 3 | 200 | 9.8 KB |
+| `*.md` | 3 | 215 | 10.6 KB |
 | `*.png` | 4 | *(Binaire)* | 4.8 KB |
 | `*.json` | 2 | 93 | 2.9 KB |
 | `*.svg` | 1 | 15 | 694 B |
 | *(sans extension)* | 1 | 11 | 117 B |
-| **TOTAL** | **19** | **12 239** | **813.6 KB** |
+| **TOTAL** | **19** | **12 389** | **823.8 KB** |
 
 ---
 *Généré automatiquement par [Auto-Github](https://github.com/Traycken/Auto-Github)*
