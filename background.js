@@ -4,6 +4,10 @@
 const steamGameCache = new Map();
 const steamSearchCache = new Map();
 const downloadLinkCache = new Map();
+const igdbSearchPending = new Map();
+let igdbRequestQueue = Promise.resolve();
+let igdbLastRequestAt = 0;
+let igdbTokenPending = null;
 
 // Configuration par défaut du cache
 const DEFAULT_CACHE_CONFIG = {
@@ -247,6 +251,20 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   }
 
+  if (msg.type === "SEARCH_IGDB_STEAM_GAME") {
+    searchIgdbSteamGame(msg.title)
+      .then(sendResponse)
+      .catch((err) => sendResponse({ error: err.message }));
+    return true;
+  }
+
+  if (msg.type === "TEST_IGDB_CONNECTION") {
+    igdbQuery('games', 'fields id; limit 1;')
+      .then(() => sendResponse({ success: true }))
+      .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
   if (msg.type === "GET_CACHE_STATS") {
     getCacheStats().then((res) => sendResponse(res));
     return true;
@@ -338,6 +356,105 @@ function cleanGameTitle(rawTitle) {
     .trim();
 
   return title;
+}
+
+// Le suffixe IGG comprend les versions et DLCs; préserver le vrai titre et ses éditions.
+function cleanIggGameTitle(rawTitle) {
+  return String(rawTitle || '').replace(/\s+Free\s+Download\b.*$/i, '').replace(/\s+/g, ' ').trim();
+}
+
+function normalizeIgdbTitle(title) {
+  return String(title || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/&/g, 'and').replace(/[^\p{L}\p{N}]/gu, '');
+}
+
+async function getIgdbToken() {
+  const settings = await chrome.storage.local.get(['igdbClientId', 'igdbClientSecret', 'igdbToken']);
+  const clientId = (settings.igdbClientId || '').trim();
+  const clientSecret = (settings.igdbClientSecret || '').trim();
+  if (!clientId || !clientSecret) throw new Error('IGDB : renseignez le Client ID et le Client Secret dans les paramètres de l’extension.');
+  const cached = settings.igdbToken;
+  if (cached?.clientId === clientId && cached.expiresAt > Date.now() + 60000) return { clientId, accessToken: cached.accessToken };
+  if (!igdbTokenPending) {
+    igdbTokenPending = (async () => {
+      const res = await fetch('https://id.twitch.tv/oauth2/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, grant_type: 'client_credentials' }),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!res.ok) throw new Error(`Authentification IGDB/Twitch refusée (HTTP ${res.status}). Vérifiez vos identifiants.`);
+      const token = await res.json();
+      if (!token.access_token || !token.expires_in) throw new Error('Réponse d’authentification IGDB invalide.');
+      await chrome.storage.local.set({ igdbToken: { clientId, accessToken: token.access_token, expiresAt: Date.now() + token.expires_in * 1000 } });
+      return { clientId, accessToken: token.access_token };
+    })().finally(() => { igdbTokenPending = null; });
+  }
+  return igdbTokenPending;
+}
+
+function igdbQuery(endpoint, body) {
+  const task = igdbRequestQueue.then(async () => {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const { clientId, accessToken } = await getIgdbToken();
+      const delay = Math.max(0, 275 - (Date.now() - igdbLastRequestAt));
+      if (delay) await new Promise(resolve => setTimeout(resolve, delay));
+      igdbLastRequestAt = Date.now();
+      const res = await fetch(`https://api.igdb.com/v4/${endpoint}`, {
+        method: 'POST', headers: { 'Client-ID': clientId, Authorization: `Bearer ${accessToken}`, Accept: 'application/json', 'Content-Type': 'text/plain' },
+        body, signal: AbortSignal.timeout(15000),
+      });
+      if (res.status === 401 && attempt === 0) { await chrome.storage.local.remove('igdbToken'); continue; }
+      if (res.status === 429 && attempt === 0) { await new Promise(resolve => setTimeout(resolve, 1000)); continue; }
+      if (!res.ok) throw new Error(`Recherche IGDB indisponible (HTTP ${res.status}).`);
+      const data = await res.json();
+      if (!Array.isArray(data)) throw new Error('Réponse IGDB invalide.');
+      return data;
+    }
+  });
+  igdbRequestQueue = task.catch(() => {});
+  return task;
+}
+
+function steamAppIdFromUrl(url) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return null;
+    if (!['store.steampowered.com', 'www.store.steampowered.com'].includes(parsed.hostname)) return null;
+    return parsed.pathname.match(/^\/app\/(\d+)(?:\/|$)/)?.[1] || null;
+  } catch { return null; }
+}
+
+async function searchIgdbSteamGame(rawTitle) {
+  const title = cleanIggGameTitle(rawTitle);
+  if (!title) return null;
+  const normalized = normalizeIgdbTitle(title);
+  const key = `lgsp_cache_igdb_steam_v1_${hashString(normalized)}`;
+  const cached = await getStorageCache(key);
+  if (cached?.appId || cached?.notFound) return cached.notFound ? null : cached;
+  if (igdbSearchPending.has(normalized)) return igdbSearchPending.get(normalized);
+  const pending = (async () => {
+    const games = await igdbQuery('games', `search ${JSON.stringify(title)}; fields name,alternative_names.name,websites.url,external_games.url,external_games.uid,external_games.external_game_source.name; limit 30;`);
+    // Éviter d'attribuer les médias d'une suite ou d'un DLC au jeu de base.
+    const matches = games.filter(game => [game.name, ...(game.alternative_names || []).map(alias => alias.name)]
+      .some(name => normalizeIgdbTitle(name) === normalized));
+    for (const game of matches) {
+      const links = [...(game.websites || []), ...(game.external_games || [])];
+      let appId = links.map(link => steamAppIdFromUrl(link.url)).find(Boolean);
+      if (!appId) {
+        const steam = (game.external_games || []).find(link => /^steam$/i.test(link.external_game_source?.name || '') && /^\d+$/.test(link.uid));
+        appId = steam?.uid;
+      }
+      if (!appId) continue;
+      const result = { appId: String(appId), name: game.name, igdbId: game.id, steamUrl: `https://store.steampowered.com/app/${appId}/`, matchedQuery: title };
+      await setStorageCache(key, result);
+      return result;
+    }
+    await setStorageCache(key, { notFound: true }, 60 * 60 * 1000);
+    return null;
+  })().finally(() => igdbSearchPending.delete(normalized));
+  igdbSearchPending.set(normalized, pending);
+  return pending;
 }
 
 async function searchSteamGame(rawTitle) {

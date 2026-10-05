@@ -1233,6 +1233,39 @@ function initHardwareSettings() {
   }
 }
 
+function initIgdbSettings() {
+  const clientId = document.getElementById("igdbClientId");
+  const secret = document.getElementById("igdbClientSecret");
+  const button = document.getElementById("igdbSaveBtn");
+  const status = document.getElementById("igdbStatus");
+  chrome.storage.local.get(["igdbClientId", "igdbClientSecret"], data => {
+    clientId.value = data.igdbClientId || "";
+    secret.value = data.igdbClientSecret || "";
+  });
+  button.addEventListener("click", async () => {
+    status.hidden = false;
+    if (!clientId.value.trim() || !secret.value.trim()) {
+      status.className = "steam-status error";
+      status.textContent = "Renseignez le Client ID et le Client Secret.";
+      return;
+    }
+    button.disabled = true;
+    status.className = "steam-status loading";
+    status.textContent = "Connexion à IGDB…";
+    try {
+      await chrome.storage.local.set({ igdbClientId: clientId.value.trim(), igdbClientSecret: secret.value.trim() });
+      await chrome.storage.local.remove("igdbToken");
+      const result = await chrome.runtime.sendMessage({ type: "TEST_IGDB_CONNECTION" });
+      if (!result?.success) throw new Error(result?.error || "IGDB ne répond pas.");
+      status.className = "steam-status success";
+      status.textContent = "IGDB connecté. Actualisez IGG-Games pour charger les informations Steam.";
+    } catch (err) {
+      status.className = "steam-status error";
+      status.textContent = err.message;
+    } finally { button.disabled = false; }
+  });
+}
+
 function init() {
   // Les 3 boutons doivent être utilisables immédiatement, indépendamment du
   // site actuellement ouvert (voire même si l'onglet actif n'est pas l'un
@@ -1242,6 +1275,7 @@ function init() {
   initScrollIndicators();
   renderSiteLinks(null);
   initSteamSync();
+  initIgdbSettings();
   initHardwareSettings();
   initCacheManager();
   initVersionChecker();

@@ -1201,7 +1201,7 @@
       }
       try {
         chrome.runtime.sendMessage(
-          { type: "SEARCH_STEAM_GAME", title },
+          { type: config.enhancedListing ? "SEARCH_IGDB_STEAM_GAME" : "SEARCH_STEAM_GAME", title },
           (response) => {
             if (!isExtensionValid() || chrome.runtime?.lastError) {
               resolve(null);
@@ -3527,12 +3527,23 @@
         renderDownloadsDropdown(card, downloadLinks);
       }
 
-      // Si aucun appId direct n'a été trouvé (ex: jeu GOG, Epic ou sans lien Steam), on recherche sur Steam avec le titre
-      if (!steamInfo || !steamInfo.appId) {
+      // IGG résout le titre via IGDB, même si une ancienne fiche Steam est en cache.
+      if (config.enhancedListing || !steamInfo || !steamInfo.appId) {
         const titleEl = card.querySelector(titleSel);
         const rawTitle = titleEl ? titleEl.textContent : "";
         if (rawTitle) {
           const searchRes = await searchSteamGame(rawTitle);
+          if (config.enhancedListing) {
+            // Ne pas conserver une correspondance issue de l'ancienne recherche Steam.
+            if (steamInfo?.platform === "steam") steamInfo = null;
+            else if (steamInfo) { delete steamInfo.appId; delete steamInfo.steamUrl; }
+            if (searchRes?.error) {
+              const notice = document.createElement("div");
+              notice.className = "lgsp-igdb-status";
+              notice.textContent = searchRes.error;
+              card.appendChild(notice);
+            }
+          }
           if (searchRes && searchRes.appId) {
             if (steamInfo) {
               steamInfo.appId = searchRes.appId;

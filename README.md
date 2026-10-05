@@ -56,6 +56,14 @@ Pour mettre à jour l'extension manuellement lorsqu'une nouvelle version est dis
 
 ## 🌟 Fonctionnalités
 
+### IGG-Games : correspondance IGDB → Steam
+
+Dans le popup de l'extension, ouvrez **Paramètres → IGDB · IGG-Games** et renseignez le **Client ID** et le **Client Secret** d'une application créée dans la [console développeur Twitch](https://dev.twitch.tv/console/apps). Choisissez le type **Confidential** et une URL de redirection `http://localhost`, puis cliquez sur **Enregistrer et tester**. Les identifiants restent dans le stockage local de ce navigateur ; l'extension renouvelle automatiquement le jeton d'accès. Voir la [documentation IGDB](https://api-docs.igdb.com/#account-creation).
+
+Après actualisation d'IGG-Games, `Project Zomboid Free Download (v42.21)` devient `Project Zomboid` pour la recherche IGDB. Le lien Steam du jeu correspondant sert ensuite à récupérer les informations, captures HD et vidéos. Les suffixes de version et de DLC situés après `Free Download` sont retirés. Une suite ou un DLC au nom différent n'est pas choisi à la place du jeu demandé. Les liens de téléchargement restent accessibles pendant la recherche ; un accès IGDB manquant ou refusé est indiqué sur la carte.
+
+### Fonctions générales
+
 - 📸 **Captures d'écran & Vidéos** : Aperçu direct des galeries d'images et bandes-annonces/trailers (YouTube/Steam/HLS) sous chaque carte de jeu.
 - ♾️ **Défilement infini (*Infinite Scroll*)** : Chargement automatique des jeux suivants en faisant défiler la page, avec séparateurs visuels élégants (*Page 2*, *Page 3*, etc.).
 - 🧭 **Navigation dynamique (SPA)** : Changement de page instantané et recherche en tâche de fond sans rechargement de la fenêtre du navigateur.

@@ -66,6 +66,12 @@ html.lgsp-loading {
     display: none !important;
 }
 
+.lgsp-igdb-status {
+    color: #d9b779;
+    font-size: .85em;
+    padding: 8px 0;
+}
+
 /* Habillage visuel générique des cartes (fond, coins arrondis, ombre) */
 .lgsp-card {
     padding: 20px 22px;

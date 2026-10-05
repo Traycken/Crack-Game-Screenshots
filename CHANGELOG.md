@@ -2,6 +2,21 @@
 
 ---
 
+### 📅 Mise à jour du 05/10/2026 à 13:42:35
+- **Branche :** `main`
+- **Message :** chore(auto-update): 05/10/2026 13:42:35
+
+**Fichiers modifiés :**
+- 📝 `README.md` *(modified)* *(<span style="color:#22c55e;">+8</span>, <span style="color:#ef4444;">-0</span>)*
+- 📝 `background.js` *(modified)* *(<span style="color:#22c55e;">+117</span>, <span style="color:#ef4444;">-0</span>)*
+- 📝 `content.js` *(modified)* *(<span style="color:#22c55e;">+14</span>, <span style="color:#ef4444;">-3</span>)*
+- 📝 `popup.html` *(modified)* *(<span style="color:#22c55e;">+11</span>, <span style="color:#ef4444;">-0</span>)*
+- 📝 `popup.js` *(modified)* *(<span style="color:#22c55e;">+34</span>, <span style="color:#ef4444;">-0</span>)*
+- 📝 `style.css` *(modified)* *(<span style="color:#22c55e;">+6</span>, <span style="color:#ef4444;">-0</span>)*
+- 🆕 `tests/` *(untracked)* *(<span style="color:#22c55e;">+0</span>, <span style="color:#ef4444;">-0</span>)*
+
+---
+
 ## 🚀 Release v2026.10.4.0912 — *Release v2026.10.4.0912* (04/10/2026)
 
 ### 📚 Documentation

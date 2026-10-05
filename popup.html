@@ -237,6 +237,17 @@
   <!-- VUE PARAMÈTRES : STEAM, INFOS ET GITHUB -->
   <div id="viewSettings" class="popup-view" hidden>
     <div class="steam-section">
+      <h2>IGDB · IGG-Games</h2>
+      <p class="steam-help">Recherche le titre sans « Free Download », version ni suffixe DLC, puis récupère les médias et informations depuis Steam.</p>
+      <p class="steam-help"><a href="https://dev.twitch.tv/console/apps" target="_blank" rel="noopener noreferrer">Créer une application Twitch</a> pour obtenir les identifiants IGDB. Ils sont enregistrés uniquement dans ce navigateur.</p>
+      <label for="igdbClientId">Client ID</label>
+      <div class="steam-input-row"><input type="text" id="igdbClientId" autocomplete="off" spellcheck="false"></div>
+      <label for="igdbClientSecret">Client Secret</label>
+      <div class="steam-input-row"><input type="password" id="igdbClientSecret" autocomplete="off" spellcheck="false"></div>
+      <div class="steam-input-row"><button type="button" id="igdbSaveBtn">Enregistrer et tester</button></div>
+      <div id="igdbStatus" class="steam-status" hidden></div>
+    </div>
+    <div class="steam-section">
       <h2>Compte Steam</h2>
       <p class="steam-help">Récupère votre Wishlist et vos jeux possédés (profil public requis).</p>
       
