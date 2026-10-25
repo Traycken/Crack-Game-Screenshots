@@ -3457,6 +3457,58 @@
 
   // --- Chargement et orchestration par carte ---------------------------------
 
+  // Chaque source (fiche du site, recherche Steam, détails Steam) est indépendante :
+  // la carte s'affiche dès la première donnée reçue et s'enrichit ensuite.
+  // Une source lente, en panne ou bloquée est abandonnée après son délai sans bloquer les autres.
+  const PAGE_FETCH_TIMEOUT_MS = 20000;
+  const STEAM_SEARCH_TIMEOUT_MS = 12000;
+  const STEAM_INFO_TIMEOUT_MS = 20000;
+
+  function withTimeout(promise, ms, fallback = null) {
+    let timer;
+    const timeout = new Promise((resolve) => {
+      timer = setTimeout(() => resolve(fallback), ms);
+    });
+    return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+  }
+
+  async function fetchPageDetail(card, link, coverData) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), PAGE_FETCH_TIMEOUT_MS);
+    try {
+      const res = await fetch(link, { credentials: "include", signal: controller.signal });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const html = await res.text();
+      const doc = new DOMParser().parseFromString(html, "text/html");
+
+      // Si la jaquette n'a pas été trouvée sur la liste, on la cherche sur la page détail
+      if (!coverData) {
+        const coverImgEl = doc.querySelector("img.aligncenter");
+        if (coverImgEl) {
+          coverData = {
+            src: coverImgEl.getAttribute("src") || "",
+            alt: coverImgEl.getAttribute("alt") || "",
+            href: link,
+          };
+        }
+      }
+
+      const pageDlData = extractPageDownloads(doc, html);
+      const detail = {
+        pageScreenshots: extractScreenshots(doc, coverData ? coverData.src : null),
+        pageVideos: extractYouTubeVideos(doc),
+        steamInfo: extractSteamInfo(doc, card),
+        downloadLinks: pageDlData.downloadLinks,
+        pageGameSize: pageDlData.pageGameSize,
+        coverData,
+      };
+      await setCachedPageDetail(link, detail);
+      return detail;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   async function loadMediaForCard(card) {
     const link = findCardLink(card);
     if (!link) return;
@@ -3468,112 +3520,21 @@
     status.textContent = "Chargement des médias...";
     card.appendChild(status);
 
-    try {
-      // Récupération de la jaquette mémorisée lors du nettoyage de la carte
-      let coverData = card._lgspCoverData || null;
+    const state = {
+      coverData: card._lgspCoverData || null,
+      pageScreenshots: [],
+      pageVideos: [],
+      steamInfo: null,
+      steamData: null,
+    };
+    let hasContent = false;
 
-      let cached = await getCachedPageDetail(link);
-      let pageScreenshots = [];
-      let pageVideos = [];
-      let steamInfo = null;
-      let downloadLinks = [];
-      let pageGameSize = null;
-
-      if (cached) {
-        pageScreenshots = cached.pageScreenshots || [];
-        pageVideos = cached.pageVideos || [];
-        steamInfo = cached.steamInfo || null;
-        downloadLinks = cached.downloadLinks || [];
-        pageGameSize = cached.pageGameSize || null;
-        if (cached.coverData && !coverData) {
-          coverData = cached.coverData;
-        }
-      } else {
-        const res = await fetch(link, { credentials: "include" });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const html = await res.text();
-        const doc = new DOMParser().parseFromString(html, "text/html");
-
-        // Si la jaquette n'a pas été trouvée sur la liste, on la cherche sur la page détail
-        if (!coverData) {
-          const coverImgEl = doc.querySelector("img.aligncenter");
-          if (coverImgEl) {
-            coverData = {
-              src: coverImgEl.getAttribute("src") || "",
-              alt: coverImgEl.getAttribute("alt") || "",
-              href: link,
-            };
-          }
-        }
-
-        const coverSrc = coverData ? coverData.src : null;
-        pageScreenshots = extractScreenshots(doc, coverSrc);
-        pageVideos = extractYouTubeVideos(doc);
-        steamInfo = extractSteamInfo(doc, card);
-
-        const pageDlData = extractPageDownloads(doc, html);
-        downloadLinks = pageDlData.downloadLinks;
-        pageGameSize = pageDlData.pageGameSize;
-
-        await setCachedPageDetail(link, { pageScreenshots, pageVideos, steamInfo, downloadLinks, pageGameSize, coverData });
-      }
-
-      if (pageGameSize) {
-        card._lgspGameSize = pageGameSize;
-      }
-
-      // Les liens du site sont disponibles sans attendre la recherche ou les données Steam.
-      if (Array.isArray(downloadLinks) && downloadLinks.length > 0) {
-        renderDownloadsDropdown(card, downloadLinks);
-      }
-
-      // IGG résout le titre via IGDB, même si une ancienne fiche Steam est en cache.
-      if (config.enhancedListing || !steamInfo || !steamInfo.appId) {
-        const titleEl = card.querySelector(titleSel);
-        const rawTitle = titleEl ? titleEl.textContent : "";
-        if (rawTitle) {
-          const searchRes = await searchSteamGame(rawTitle);
-          if (config.enhancedListing) {
-            // Ne pas conserver une correspondance issue de l'ancienne recherche Steam.
-            if (steamInfo?.platform === "steam") steamInfo = null;
-            else if (steamInfo) { delete steamInfo.appId; delete steamInfo.steamUrl; }
-            if (searchRes?.error) {
-              const notice = document.createElement("div");
-              notice.className = "lgsp-igdb-status";
-              notice.textContent = searchRes.error;
-              card.appendChild(notice);
-            }
-          }
-          if (searchRes && searchRes.appId) {
-            if (steamInfo) {
-              steamInfo.appId = searchRes.appId;
-            } else {
-              steamInfo = {
-                platform: "steam",
-                name: "Steam",
-                storeUrl: `https://store.steampowered.com/app/${searchRes.appId}/`,
-                steamUrl: `https://store.steampowered.com/app/${searchRes.appId}/`,
-                appId: searchRes.appId,
-                btnClass: "lgsp-store-steam",
-              };
-            }
-          }
-        }
-      }
-
-      // Récupération des données Steam enrichies
-      let steamData = null;
-      if (steamInfo && steamInfo.appId) {
-        steamData = await requestSteamGameInfo(steamInfo.appId);
-      }
-
-      // Construction de la liste multimédia combinée (Vidéos + Captures)
+    // Affiche l'état courant : appelé à chaque nouvelle donnée reçue.
+    const paint = () => {
       const combinedMedia = [];
+      state.pageVideos.forEach((v) => combinedMedia.push(v));
 
-      // A. Vidéos YouTube trouvées sur la page
-      pageVideos.forEach((v) => combinedMedia.push(v));
-
-      // B. Trailers Steam si disponibles
+      const steamData = state.steamData;
       if (steamData && Array.isArray(steamData.movies)) {
         steamData.movies.forEach((m) => {
           if (m.hls || m.mp4 || m.webm || m.thumbnail) {
@@ -3589,12 +3550,10 @@
         });
       }
 
-      // C. Captures d'écran de la page détail
-      pageScreenshots.forEach((src) => {
+      state.pageScreenshots.forEach((src) => {
         combinedMedia.push({ type: "image", src, thumbnail: src });
       });
 
-      // D. Captures d'écran HD supplémentaires de Steam
       if (steamData && Array.isArray(steamData.screenshots)) {
         steamData.screenshots.forEach((s) => {
           // Évite d'ajouter si déjà présent
@@ -3609,22 +3568,107 @@
         });
       }
 
-      // Limitation selon le réglage de la popup et rendu
       const maxAllowed = (lastSettings && lastSettings.maxTotalScreenshots) || DEFAULTS.maxTotalScreenshots;
       const finalMedia = combinedMedia.slice(0, maxAllowed);
-      renderGallery(card, finalMedia, coverData);
+      if (finalMedia.length > 0 || state.coverData) {
+        renderGallery(card, finalMedia, state.coverData);
+        hasContent = true;
+      }
 
-      if (steamInfo && (steamInfo.storeUrl || steamInfo.steamUrl)) {
-        renderSteamInfo(card, steamInfo, steamData);
-      } else if (pageGameSize) {
-        renderSteamInfo(card, null, null);
+      // renderSteamInfo ne met pas à jour un bandeau existant : on le reconstruit.
+      const info = state.steamInfo;
+      const hasStore = info && (info.storeUrl || info.steamUrl);
+      if (hasStore || card._lgspGameSize) {
+        card.querySelector(".lgsp-steam-info")?.remove();
+        renderSteamInfo(card, hasStore ? info : null, hasStore ? state.steamData : null);
+        hasContent = true;
       }
 
       // Conserver le menu déjà affiché et son état après l'ajout des médias.
       const downloads = card.querySelector(".lgsp-downloads-wrapper");
       if (downloads) card.appendChild(downloads);
+    };
+
+    try {
+      const cached = await getCachedPageDetail(link);
+
+      // La recherche Steam ne dépend que du titre : elle part en parallèle de la fiche.
+      const titleEl = card.querySelector(titleSel);
+      const rawTitle = titleEl ? titleEl.textContent : "";
+      const searchPromise =
+        rawTitle && (config.enhancedListing || !cached?.steamInfo?.appId)
+          ? withTimeout(searchSteamGame(rawTitle), STEAM_SEARCH_TIMEOUT_MS)
+          : null;
+
+      // 1. Fiche du site : jaquette, captures, vidéos, liens et poids.
+      let pageError = null;
+      let detail = cached;
+      if (!detail) {
+        try {
+          detail = await fetchPageDetail(card, link, state.coverData);
+        } catch (err) {
+          pageError = err;
+        }
+      }
+      if (detail) {
+        state.coverData = state.coverData || detail.coverData || null;
+        state.pageScreenshots = detail.pageScreenshots || [];
+        state.pageVideos = detail.pageVideos || [];
+        state.steamInfo = detail.steamInfo || null;
+        if (detail.pageGameSize) card._lgspGameSize = detail.pageGameSize;
+        // Les liens du site sont disponibles sans attendre la recherche ou les données Steam.
+        if (Array.isArray(detail.downloadLinks) && detail.downloadLinks.length > 0) {
+          renderDownloadsDropdown(card, detail.downloadLinks);
+        }
+        paint();
+      } else if (pageError) {
+        console.warn("[Game Sites Screenshots]", link, pageError);
+      }
+      if (!hasContent) status.textContent = "Recherche des données Steam...";
+
+      // 2. Recherche Steam (IGG résout le titre via IGDB, même si une ancienne fiche Steam est en cache).
+      if (searchPromise && (config.enhancedListing || !state.steamInfo?.appId)) {
+        const searchRes = await searchPromise;
+        if (config.enhancedListing) {
+          // Ne pas conserver une correspondance issue de l'ancienne recherche Steam.
+          if (state.steamInfo?.platform === "steam") state.steamInfo = null;
+          else if (state.steamInfo) { delete state.steamInfo.appId; delete state.steamInfo.steamUrl; }
+          if (searchRes?.error) {
+            const notice = document.createElement("div");
+            notice.className = "lgsp-igdb-status";
+            notice.textContent = searchRes.error;
+            card.appendChild(notice);
+          }
+        }
+        if (searchRes && searchRes.appId) {
+          if (state.steamInfo) {
+            state.steamInfo.appId = searchRes.appId;
+          } else {
+            state.steamInfo = {
+              platform: "steam",
+              name: "Steam",
+              storeUrl: `https://store.steampowered.com/app/${searchRes.appId}/`,
+              steamUrl: `https://store.steampowered.com/app/${searchRes.appId}/`,
+              appId: searchRes.appId,
+              btnClass: "lgsp-store-steam",
+            };
+          }
+          paint();
+        }
+      }
+
+      // 3. Détails Steam (prix, langues, trailers, configuration) : enrichissent la carte à leur arrivée.
+      if (state.steamInfo && state.steamInfo.appId) {
+        state.steamData = await withTimeout(requestSteamGameInfo(state.steamInfo.appId), STEAM_INFO_TIMEOUT_MS);
+        if (state.steamData) paint();
+      }
+
+      if (!hasContent) {
+        if (pageError) throw pageError;
+        renderGallery(card, [], state.coverData);
+      }
     } catch (err) {
-      status.textContent = "Erreur de chargement";
+      if (!hasContent) status.textContent = "Erreur de chargement";
       console.warn("[Game Sites Screenshots]", link, err);
     }
   }

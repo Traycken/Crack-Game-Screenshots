@@ -1,6 +1,7 @@
 // Faux environnement d'extension pour la démo : chrome.* en mémoire, fetch() sur fiches pré-enregistrées,
 // sendMessage() répondant depuis fixtures.json, navigation désactivée.
 (() => {
+  window.__REAL_SEARCH__ = window.location.search;
   const loc = {
     hostname: "www.skidrowreloaded.com",
     host: "www.skidrowreloaded.com",
@@ -59,7 +60,10 @@
       sendMessage(msg, cb) {
         const res = fixtures.messages[msgKey(msg)];
         if (res === undefined) window.__DEMO_MISSES__.push(msgKey(msg));
-        setTimeout(() => typeof cb === "function" && cb(res === undefined ? null : res), 30);
+        // ?steam=down : l'API ne répond jamais ; ?steam=slow : réponse après 4 s (pour tester l'affichage progressif)
+        const mode = new URLSearchParams(window.__REAL_SEARCH__).get("steam");
+        if (mode === "down") return;
+        setTimeout(() => typeof cb === "function" && cb(res === undefined ? null : res), mode === "slow" ? 4000 : 30);
       },
     },
     storage: {
