@@ -457,6 +457,9 @@ async function searchIgdbSteamGame(rawTitle) {
   return pending;
 }
 
+const TTL_STEAM_SEARCH_FOUND = 7 * 24 * 60 * 60 * 1000; // 7 jours
+const TTL_STEAM_SEARCH_NOT_FOUND = 60 * 60 * 1000; // 1 heure
+
 async function searchSteamGame(rawTitle) {
   const cleaned = cleanGameTitle(rawTitle);
   if (!cleaned) return null;
